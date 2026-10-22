@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Noyce Joyce Nixie",
+        "description": "Velg en funnet Nixie Clock. Hvis ingen er funnet kan du skrive inn Bluetooth-adressen manuelt.",
+        "data": {
+          "address": "Bluetooth-enhet / adresse"
+        }
+      },
+      "confirm": {
+        "title": "Legg til Nixie Clock",
+        "description": "Legg til {name} ({address}) i Home Assistant?"
+      }
+    },
+    "abort": {
+      "already_configured": "Denne klokken er allerede lagt til.",
+      "not_connectable": "Klokken ble funnet via en Bluetooth-kilde som ikke støtter aktive tilkoblinger."
+    }
+  }
+}
