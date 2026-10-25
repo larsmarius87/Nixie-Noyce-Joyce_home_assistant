@@ -2,6 +2,16 @@
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
+## 0.6.7
+
+- Changed startup so the integration no longer blocks config-entry setup on the first BLE connection.
+- Added safe placeholder coordinator data so entity platforms can load before the clock is reachable.
+- Initial BLE refresh now runs in the background after the entity platforms are set up.
+- Failed BLE refreshes request a 30-second retry through Home Assistant's DataUpdateCoordinator instead of leaving the config entry in setup retry.
+- BLE-dependent advanced schedule programming is deferred until the first successful clock read.
+- Advanced schedule status shows `Venter på klokka` while waiting for the first successful BLE read.
+- This improves recovery after Home Assistant restarts when an ESPHome Bluetooth Proxy temporarily has a stale or busy connection slot.
+
 ## 0.6.6
 
 - Added local Home Assistant brand artwork for the integration.
