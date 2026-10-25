@@ -26,11 +26,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: NixieConfigEntry) -> boo
     address = entry.data[CONF_ADDRESS]
     api = NixieBLE(hass, address, entry.title or NAME)
     coordinator = NixieCoordinator(hass, api, entry)
-    await coordinator.async_config_entry_first_refresh()
 
+    # Do not block config-entry setup on the first BLE connection. ESPHome
+    # Bluetooth proxies can briefly have stale/busy connection-slot state after
+    # a Home Assistant restart. The coordinator starts with unavailable fallback
+    # data, then refreshes immediately in the background and retries on failure.
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     coordinator.async_start()
+    hass.async_create_task(
+        coordinator.async_refresh(),
+        "Noyce Joyce Nixie initial BLE refresh",
+    )
     return True
 
 
