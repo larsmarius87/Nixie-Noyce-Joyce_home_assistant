@@ -67,6 +67,7 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=api.name,
             update_interval=UPDATE_INTERVAL,
         )
@@ -82,6 +83,48 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         self._programmed_schedule_window: ScheduleWindow | None = None
         self._schedule_last_verified: datetime | None = None
         self._schedule_last_error: str | None = None
+        self._started = False
+        self._initial_state_loaded = False
+
+        # Entity platforms are loaded before the first BLE connection in v0.6.7.
+        # Seed safe fallback data so entities can be created while the coordinator
+        # correctly reports them unavailable until a real clock read succeeds.
+        self.data = self._fallback_state()
+        self.last_update_success = False
+
+    def _fallback_state(self) -> NixieState:
+        """Build placeholder state from persisted options where possible."""
+
+        def stored_seconds(*keys: str) -> int:
+            for key in keys:
+                raw = self.entry.options.get(key)
+                if raw is None:
+                    continue
+                try:
+                    value = time.fromisoformat(str(raw)).replace(tzinfo=None)
+                except ValueError:
+                    continue
+                return value.hour * 3600 + value.minute * 60 + value.second
+            return 0
+
+        return NixieState(
+            firmware_version=None,
+            hourglass=4,
+            time_format=0,
+            nixie_dots=False,
+            night_mode=bool(
+                self.entry.options.get(CONF_SIMPLE_NIGHT_MODE_ENABLED, False)
+            ),
+            night_mode_start=stored_seconds(
+                CONF_SIMPLE_NIGHT_START_TIME, CONF_WEEKDAY_OFF_TIME
+            ),
+            night_mode_end=stored_seconds(
+                CONF_SIMPLE_NIGHT_END_TIME, CONF_WEEKDAY_ON_TIME
+            ),
+            clock_time=None,
+            clock_drift_seconds=None,
+            clock_read_at=None,
+        )
 
     async def _async_update_data(self) -> NixieState:
         try:
@@ -89,7 +132,23 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
             self._record_contact()
             return state
         except NixieConnectionError as err:
-            raise UpdateFailed(str(err)) from err
+            # A proxy may briefly have a stale/busy connection slot after HA
+            # startup. Keep the integration loaded and retry quickly instead of
+            # leaving the config entry stuck in SETUP_RETRY.
+            raise UpdateFailed(str(err), retry_after=30.0) from err
+
+    @callback
+    def _async_refresh_finished(self) -> None:
+        """Start BLE-dependent scheduling after the first successful clock read."""
+        if (
+            not self._started
+            or not self.last_update_success
+            or self._initial_state_loaded
+        ):
+            return
+
+        self._initial_state_loaded = True
+        self._schedule_advanced_programming()
 
     # ---------------------------------------------------------------------
     # Persistent local options
@@ -253,12 +312,15 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
     @callback
     def async_start(self) -> None:
         """Start timers owned by the integration."""
+        self._started = True
         self._schedule_auto_sync()
-        self._schedule_advanced_programming()
+        # Advanced schedule programming is deferred until the first successful
+        # BLE read. This avoids competing startup connections through a proxy.
 
     @callback
     def async_shutdown(self) -> None:
         """Cancel all timers owned by the integration."""
+        self._started = False
         for attr in (
             "_unsub_auto_sync",
             "_unsub_sync_retry",
@@ -448,6 +510,14 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         if self._unsub_schedule_retry is not None:
             self._unsub_schedule_retry()
             self._unsub_schedule_retry = None
+
+        if not self._initial_state_loaded:
+            self._schedule_status = "Venter på klokka"
+            self._schedule_target_window = None
+            self._programmed_schedule_window = None
+            self._schedule_last_error = None
+            self.async_update_listeners()
+            return
 
         if not self.advanced_schedule_enabled:
             self._schedule_status = "Enkel modus"
