@@ -314,6 +314,9 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         """Start timers owned by the integration."""
         self._started = True
         self._schedule_auto_sync()
+        if self.advanced_schedule_enabled:
+            self._schedule_status = "Venter på klokka"
+            self.async_update_listeners()
         # Advanced schedule programming is deferred until the first successful
         # BLE read. This avoids competing startup connections through a proxy.
 
