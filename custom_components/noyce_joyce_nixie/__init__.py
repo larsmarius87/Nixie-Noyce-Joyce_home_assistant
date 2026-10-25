@@ -34,10 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NixieConfigEntry) -> boo
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     coordinator.async_start()
-    hass.async_create_task(
-        coordinator.async_refresh(),
-        "Noyce Joyce Nixie initial BLE refresh",
-    )
+    entry.async_create_task(hass, coordinator.async_refresh())
     return True
 
 
