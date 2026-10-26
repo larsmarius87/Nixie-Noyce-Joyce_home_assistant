@@ -2,6 +2,14 @@
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
+## 0.6.8
+
+- Added `Sist brukt Bluetooth-proxy` diagnostic sensor.
+- Tracks the scanner/proxy source that actually carried the latest successful BLE connection, rather than only the most recent advertiser.
+- Uses the proxy/scanner source (normally its MAC address) as sensor state.
+- Adds the proxy/scanner name as an attribute when Home Assistant provides it.
+- Keeps the last known source visible while the clock is temporarily offline.
+
 ## 0.6.7
 
 - Changed startup so the integration no longer blocks config-entry setup on the first BLE connection.
