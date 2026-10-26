@@ -1,4 +1,4 @@
-# Noyce Joyce Nixie – Home Assistant v0.6.6
+# Noyce Joyce Nixie – Home Assistant v0.6.5
 
 Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
@@ -63,11 +63,3 @@ Nye diagnostikksensorer:
 - **Tidsplanstatus** – `Bekreftet`, `Kontrollerer`, `Ikke bekreftet – prøver igjen` eller `Enkel modus`.
 - **Programmert intervall** – siste intervall som er lest tilbake og bekreftet, f.eks. `Natt 23:30–06:30`.
 - **Sist tidsplan bekreftet** – tidspunkt for siste vellykkede read-back-verifisering.
-
-## v0.6.6
-
-- Added local Home Assistant brand artwork (`brand/icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`).
-
-## Changelog
-
-See [`CHANGELOG.md`](CHANGELOG.md) for version history.
