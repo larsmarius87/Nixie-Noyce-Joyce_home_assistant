@@ -1,4 +1,4 @@
-# Noyce Joyce Nixie – Home Assistant v0.5.0
+# Noyce Joyce Nixie – Home Assistant v0.6.0
 
 Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
@@ -33,3 +33,13 @@ Dagtidsavslag gjelder mandag–fredag. Siden klokkens firmware bare kan lagre et
 Kopier `custom_components/noyce_joyce_nixie` over eksisterende mappe og start Home Assistant på nytt.
 
 Eksisterende innstillinger fra v0.4 beholdes. Avansert tidsplan starter i `Enkel`, så den endrer ikke klokkas oppførsel før du velger `Ukedag / helg`.
+
+
+## RTC / drift measurement (v0.6.0)
+
+The integration now attempts to read the clock's own RTC value from the Date/Time characteristic on every normal coordinator refresh (5 minutes). Two diagnostic sensors are exposed:
+
+- **Klokkens tid** – the wall-clock time returned by the Nixie clock at the last read.
+- **Klokkeavvik** – difference in seconds between the Nixie RTC and Home Assistant at the BLE read midpoint. Positive values mean the Nixie clock is ahead.
+
+The read is optional/fail-safe: if a firmware variant does not permit reading the Date/Time characteristic, all other entities continue working.

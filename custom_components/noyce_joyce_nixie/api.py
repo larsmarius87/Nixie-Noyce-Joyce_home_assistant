@@ -5,14 +5,17 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from bleak import BleakClient
 from bleak.exc import BleakError
 from bleak_retry_connector import establish_connection
 from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 
 from .const import (
+    DATE_TIME_UUID,
     FIRMWARE_REVISION_UUID,
     HOURGLASS_UUID,
     NIGHT_MODE_END_UUID,
@@ -40,6 +43,9 @@ class NixieState:
     night_mode: bool
     night_mode_start: int
     night_mode_end: int
+    clock_time: datetime | None
+    clock_drift_seconds: float | None
+    clock_read_at: datetime | None
 
 
 class NixieBLE:
@@ -95,6 +101,40 @@ class NixieBLE:
             client = await self._connect()
             try:
                 firmware_raw = await client.read_gatt_char(FIRMWARE_REVISION_UUID)
+
+                # The official app exposes the clock RTC time. Read it independently so
+                # a firmware variant without Date/Time Read support does not break the
+                # rest of the integration. The value uses the same local Unix-like
+                # encoding that we write when synchronizing the clock.
+                clock_time = None
+                clock_drift_seconds = None
+                clock_read_at = None
+                try:
+                    read_started = datetime.now(timezone.utc)
+                    clock_raw = await client.read_gatt_char(DATE_TIME_UUID)
+                    read_finished = datetime.now(timezone.utc)
+                    clock_epoch = self._read_u32_le(clock_raw)
+
+                    midpoint_ts = (
+                        read_started.timestamp() + read_finished.timestamp()
+                    ) / 2.0
+                    midpoint_utc = datetime.fromtimestamp(midpoint_ts, timezone.utc)
+                    midpoint_local = dt_util.as_local(midpoint_utc)
+                    offset = midpoint_local.utcoffset()
+                    offset_seconds = int(offset.total_seconds()) if offset else 0
+                    expected_local_epoch = midpoint_ts + offset_seconds
+                    clock_drift_seconds = clock_epoch - expected_local_epoch
+
+                    # Interpret the device epoch as local wall-clock fields.
+                    wall_fields = datetime.fromtimestamp(clock_epoch, timezone.utc)
+                    clock_time = wall_fields.replace(tzinfo=None).replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+                    clock_read_at = midpoint_utc
+                except (BleakError, TimeoutError, ValueError) as err:
+                    _LOGGER.debug(
+                        "Could not read Nixie RTC time; other settings remain available: %s",
+                        err,
+                    )
+
                 hourglass_raw = await client.read_gatt_char(HOURGLASS_UUID)
                 time_format_raw = await client.read_gatt_char(TIME_FORMAT_UUID)
                 dots_raw = await client.read_gatt_char(NIXIE_DOTS_UUID)
@@ -120,6 +160,9 @@ class NixieBLE:
                     night_mode=bool(self._read_u8(night_raw)),
                     night_mode_start=self._read_u32_le(start_raw) % 86400,
                     night_mode_end=self._read_u32_le(end_raw) % 86400,
+                    clock_time=clock_time,
+                    clock_drift_seconds=clock_drift_seconds,
+                    clock_read_at=clock_read_at,
                 )
             except (BleakError, TimeoutError, ValueError) as err:
                 raise NixieConnectionError(

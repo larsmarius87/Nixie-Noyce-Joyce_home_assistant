@@ -2,7 +2,11 @@
 
 from datetime import datetime, timedelta
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -21,6 +25,8 @@ async def async_setup_entry(
     async_add_entities(
         [
             FirmwareSensor(coordinator),
+            ClockTimeSensor(coordinator),
+            ClockDriftSensor(coordinator),
             NextScheduleEventSensor(coordinator),
             LastSyncSensor(coordinator),
             LastContactSensor(coordinator),
@@ -39,6 +45,55 @@ class FirmwareSensor(NixieEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         return self.coordinator.data.firmware_version
+
+
+class ClockTimeSensor(NixieEntity, SensorEntity):
+    _attr_name = "Klokkens tid"
+    _attr_icon = "mdi:clock-digital"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "clock_time")
+
+    @property
+    def native_value(self) -> datetime | None:
+        return self.coordinator.data.clock_time
+
+    @property
+    def extra_state_attributes(self):
+        read_at = self.coordinator.data.clock_read_at
+        return {"avlest": read_at.isoformat()} if read_at is not None else {}
+
+
+class ClockDriftSensor(NixieEntity, SensorEntity):
+    _attr_name = "Klokkeavvik"
+    _attr_icon = "mdi:timer-sync-outline"
+    _attr_native_unit_of_measurement = "s"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "clock_drift")
+
+    @property
+    def native_value(self) -> float | None:
+        drift = self.coordinator.data.clock_drift_seconds
+        return round(drift, 1) if drift is not None else None
+
+    @property
+    def extra_state_attributes(self):
+        drift = self.coordinator.data.clock_drift_seconds
+        read_at = self.coordinator.data.clock_read_at
+        attrs = {
+            "forklaring": "Positiv verdi betyr at Nixie-klokka går foran Home Assistant"
+        }
+        if read_at is not None:
+            attrs["avlest"] = read_at.isoformat()
+        if drift is not None:
+            attrs["retning"] = "foran" if drift > 0 else "bak" if drift < 0 else "lik"
+        return attrs
 
 
 class NextScheduleEventSensor(NixieEntity, SensorEntity):
