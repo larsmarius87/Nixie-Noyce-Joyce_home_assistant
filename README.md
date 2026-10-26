@@ -2,10 +2,11 @@
 
 Built by reverse engineering the official Noyce Joyce Nixie Android app (1.0.7) and its bundled firmware (1.17).
 
-## Supported in v0.3.0
+## Supported in v0.4.0
 
 - Clock synchronization from Home Assistant
-- Automatic daily clock sync at 04:05 local Home Assistant time
+- **Auto-sync on/off** as a configuration switch
+- **Adjustable daily auto-sync time** (default 04:05 local Home Assistant time)
 - Manual **Synchronize clock** button
 - Nixie dots: on/off
 - Night mode: on/off
@@ -24,6 +25,12 @@ The integration communicates locally and directly over Bluetooth LE. No cloud se
 3. Keep the Nixie clock powered on and in Bluetooth range.
 4. Home Assistant should discover `Nixie Clock`. If not, go to **Settings → Devices & services → Add integration → Noyce Joyce Nixie**.
 
+## Automatic synchronization
+
+Automatic synchronization is enabled by default and runs daily at **04:05** using Home Assistant's local time zone. Both the enable/disable switch and synchronization time are exposed on the Nixie device as configuration entities and are persisted across Home Assistant restarts.
+
+The manual **Synchronize clock** button remains available regardless of the auto-sync setting.
+
 ## Hourglass Off mapping
 
 Firmware 1.17 does not expose a true disabled state for the hourglass / anti-poisoning effect. In Home Assistant, **Off** maps to firmware value `4`, which is the least frequent mode: once per day. The clock firmware normally runs that effect around 03:00.
@@ -32,4 +39,4 @@ Firmware 1.17 does not expose a true disabled state for the hourglass / anti-poi
 
 - The clock uses an nRF52 BLE controller and the custom GATT service `A8ED1400-130A-4D4B-ACBA-5DE7E77E9B47`.
 - Settings are read every 5 minutes; writes are applied immediately.
-- Daily synchronization uses Home Assistant local time, including the current UTC offset, so DST changes are corrected automatically at the next synchronization.
+- Clock synchronization uses Home Assistant local time, including the current UTC offset, so DST changes are corrected automatically at the next synchronization.

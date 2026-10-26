@@ -25,14 +25,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: NixieConfigEntry) -> boo
     """Set up Noyce Joyce Nixie from a config entry."""
     address = entry.data[CONF_ADDRESS]
     api = NixieBLE(hass, address, entry.title or NAME)
-    coordinator = NixieCoordinator(hass, api)
+    coordinator = NixieCoordinator(hass, api, entry)
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
+    coordinator.async_start_auto_sync()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: NixieConfigEntry) -> bool:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        entry.runtime_data.async_shutdown()
+    return unload_ok

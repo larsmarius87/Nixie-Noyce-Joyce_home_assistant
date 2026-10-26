@@ -5,6 +5,7 @@ from datetime import time
 from homeassistant.components.time import TimeEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import NixieConfigEntry
@@ -30,7 +31,11 @@ async def async_setup_entry(
 ) -> None:
     coordinator = entry.runtime_data
     async_add_entities(
-        [NightModeStartTime(coordinator), NightModeEndTime(coordinator)]
+        [
+            NightModeStartTime(coordinator),
+            NightModeEndTime(coordinator),
+            AutoSyncTime(coordinator),
+        ]
     )
 
 
@@ -68,3 +73,26 @@ class NightModeEndTime(NixieEntity, TimeEntity):
             await self.coordinator.async_set_night_end(_time_to_seconds(value))
         except NixieConnectionError as err:
             raise HomeAssistantError(str(err)) from err
+
+
+class AutoSyncTime(NixieEntity, TimeEntity):
+    """Time of day when Home Assistant synchronizes the Nixie clock."""
+
+    _attr_name = "Tidspunkt for auto-synk"
+    _attr_icon = "mdi:clock-edit-outline"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "auto_sync_time")
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def native_value(self) -> time:
+        return self.coordinator.auto_sync_time
+
+    async def async_set_value(self, value: time) -> None:
+        await self.coordinator.async_set_auto_sync_time(value)
+        self.async_write_ha_state()
