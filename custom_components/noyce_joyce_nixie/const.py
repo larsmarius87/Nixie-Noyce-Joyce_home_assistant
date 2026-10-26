@@ -1,33 +1,38 @@
 """Constants for the Noyce Joyce Nixie integration."""
 
+from datetime import timedelta
+
 DOMAIN = "noyce_joyce_nixie"
+NAME = "Noyce Joyce Nixie"
 MANUFACTURER = "Noyce Joyce"
 MODEL = "Nixie Clock"
+
+UPDATE_INTERVAL = timedelta(minutes=5)
 
 SERVICE_UUID = "a8ed1400-130a-4d4b-acba-5de7e77e9b47"
 DATE_TIME_UUID = "a8ed1410-130a-4d4b-acba-5de7e77e9b47"
 TIME_FORMAT_UUID = "a8ed1420-130a-4d4b-acba-5de7e77e9b47"
 HOURGLASS_UUID = "a8ed1421-130a-4d4b-acba-5de7e77e9b47"
 NIGHT_MODE_UUID = "a8ed1423-130a-4d4b-acba-5de7e77e9b47"
-NIGHT_ON_UUID = "a8ed1424-130a-4d4b-acba-5de7e77e9b47"
-NIGHT_OFF_UUID = "a8ed1425-130a-4d4b-acba-5de7e77e9b47"
+NIGHT_MODE_END_UUID = "a8ed1424-130a-4d4b-acba-5de7e77e9b47"  # Display ON time
+NIGHT_MODE_START_UUID = "a8ed1425-130a-4d4b-acba-5de7e77e9b47"  # Display OFF time
 NIXIE_DOTS_UUID = "a8ed1426-130a-4d4b-acba-5de7e77e9b47"
-FIRMWARE_REV_UUID = "00002a26-0000-1000-8000-00805f9b34fb"
+BOOTLOADER_UUID = "a8ed14ff-130a-4d4b-acba-5de7e77e9b47"  # Intentionally unused
+
+DEVICE_INFO_SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
+FIRMWARE_REVISION_UUID = "00002a26-0000-1000-8000-00805f9b34fb"
+
+HOURGLASS_OPTIONS = {
+    0: "Hvert minutt",
+    1: "Hvert 10. minutt",
+    2: "Hvert 30. minutt",
+    3: "Hver time",
+    4: "Av",
+}
+HOURGLASS_VALUES = {label: value for value, label in HOURGLASS_OPTIONS.items()}
 
 TIME_FORMAT_OPTIONS = {
-    "24 timer": 0,
-    "12 timer": 1,
+    0: "24 timer",
+    1: "12 timer",
 }
-TIME_FORMAT_FROM_RAW = {value: label for label, value in TIME_FORMAT_OPTIONS.items()}
-
-# Confirmed from the firmware's anti-poisoning scheduler.
-HOURGLASS_OPTIONS = {
-    "1 minutt": 0,
-    "10 minutter": 1,
-    "30 minutter": 2,
-    "60 minutter": 3,
-    "24 timer": 4,
-}
-HOURGLASS_FROM_RAW = {value: label for label, value in HOURGLASS_OPTIONS.items()}
-
-UPDATE_INTERVAL_SECONDS = 300
+TIME_FORMAT_VALUES = {label: value for value, label in TIME_FORMAT_OPTIONS.items()}

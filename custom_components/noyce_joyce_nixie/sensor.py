@@ -1,32 +1,28 @@
-"""Diagnostic sensors for Noyce Joyce Nixie."""
-
-from __future__ import annotations
+"""Sensor entities for Noyce Joyce Nixie."""
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .coordinator import NoyceJoyceCoordinator
-from .entity import NoyceJoyceEntity
+from . import NixieConfigEntry
+from .entity import NixieEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: NixieConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    coordinator: NoyceJoyceCoordinator = entry.runtime_data
-    async_add_entities([FirmwareSensor(coordinator)])
+    async_add_entities([FirmwareSensor(entry.runtime_data)])
 
 
-class FirmwareSensor(NoyceJoyceEntity, SensorEntity):
+class FirmwareSensor(NixieEntity, SensorEntity):
     _attr_name = "Firmware"
     _attr_icon = "mdi:chip"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: NoyceJoyceCoordinator) -> None:
+    def __init__(self, coordinator):
         super().__init__(coordinator, "firmware")
 
     @property

@@ -1,36 +1,31 @@
 """Switch entities for Noyce Joyce Nixie."""
 
-from __future__ import annotations
-
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import NIGHT_MODE_UUID, NIXIE_DOTS_UUID
-from .coordinator import NoyceJoyceCoordinator
-from .entity import NoyceJoyceEntity
+from . import NixieConfigEntry
+from .api import NixieConnectionError
+from .entity import NixieEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: NixieConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    coordinator: NoyceJoyceCoordinator = entry.runtime_data
+    coordinator = entry.runtime_data
     async_add_entities(
-        [
-            NixieDotsSwitch(coordinator),
-            NightModeSwitch(coordinator),
-        ]
+        [NixieDotsSwitch(coordinator), NightModeSwitch(coordinator)]
     )
 
 
-class NixieDotsSwitch(NoyceJoyceEntity, SwitchEntity):
+class NixieDotsSwitch(NixieEntity, SwitchEntity):
     _attr_name = "Nixie-prikker"
     _attr_icon = "mdi:dots-horizontal"
 
-    def __init__(self, coordinator: NoyceJoyceCoordinator) -> None:
+    def __init__(self, coordinator):
         super().__init__(coordinator, "nixie_dots")
 
     @property
@@ -38,19 +33,23 @@ class NixieDotsSwitch(NoyceJoyceEntity, SwitchEntity):
         return self.coordinator.data.nixie_dots
 
     async def async_turn_on(self, **kwargs) -> None:
-        await self.coordinator.device.async_write_u8(NIXIE_DOTS_UUID, 1)
-        await self._refresh_after_write()
+        try:
+            await self.coordinator.async_set_nixie_dots(True)
+        except NixieConnectionError as err:
+            raise HomeAssistantError(str(err)) from err
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self.coordinator.device.async_write_u8(NIXIE_DOTS_UUID, 0)
-        await self._refresh_after_write()
+        try:
+            await self.coordinator.async_set_nixie_dots(False)
+        except NixieConnectionError as err:
+            raise HomeAssistantError(str(err)) from err
 
 
-class NightModeSwitch(NoyceJoyceEntity, SwitchEntity):
+class NightModeSwitch(NixieEntity, SwitchEntity):
     _attr_name = "Nattmodus"
     _attr_icon = "mdi:weather-night"
 
-    def __init__(self, coordinator: NoyceJoyceCoordinator) -> None:
+    def __init__(self, coordinator):
         super().__init__(coordinator, "night_mode")
 
     @property
@@ -58,9 +57,13 @@ class NightModeSwitch(NoyceJoyceEntity, SwitchEntity):
         return self.coordinator.data.night_mode
 
     async def async_turn_on(self, **kwargs) -> None:
-        await self.coordinator.device.async_write_u8(NIGHT_MODE_UUID, 1)
-        await self._refresh_after_write()
+        try:
+            await self.coordinator.async_set_night_mode(True)
+        except NixieConnectionError as err:
+            raise HomeAssistantError(str(err)) from err
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self.coordinator.device.async_write_u8(NIGHT_MODE_UUID, 0)
-        await self._refresh_after_write()
+        try:
+            await self.coordinator.async_set_night_mode(False)
+        except NixieConnectionError as err:
+            raise HomeAssistantError(str(err)) from err

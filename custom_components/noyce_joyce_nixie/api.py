@@ -1,27 +1,23 @@
-"""Bluetooth API for the Noyce Joyce Nixie clock."""
+"""BLE protocol implementation for Noyce Joyce Nixie Clock."""
 
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
-from dataclasses import dataclass
-from datetime import time
 import logging
-import struct
+from dataclasses import dataclass
 
 from bleak import BleakClient
 from bleak.exc import BleakError
-
+from bleak_retry_connector import establish_connection
 from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
 
 from .const import (
-    DATE_TIME_UUID,
-    FIRMWARE_REV_UUID,
+    FIRMWARE_REVISION_UUID,
     HOURGLASS_UUID,
+    NIGHT_MODE_END_UUID,
+    NIGHT_MODE_START_UUID,
     NIGHT_MODE_UUID,
-    NIGHT_OFF_UUID,
-    NIGHT_ON_UUID,
     NIXIE_DOTS_UUID,
     TIME_FORMAT_UUID,
 )
@@ -29,173 +25,138 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class NoyceJoyceError(Exception):
-    """Base error for Noyce Joyce communication."""
+class NixieConnectionError(Exception):
+    """Raised when the clock cannot be reached over BLE."""
 
 
-class NoyceJoyceNotFoundError(NoyceJoyceError):
-    """Raised when the clock is not currently reachable."""
-
-
-class NoyceJoyceCommunicationError(NoyceJoyceError):
-    """Raised when BLE communication fails."""
-
-
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class NixieState:
-    """Current configurable state read from the clock."""
+    """State read from the clock."""
 
-    time_format: int
-    hourglass: int
-    night_mode: bool
-    night_on: time
-    night_off: time
-    nixie_dots: bool
     firmware_version: str | None
+    hourglass: int
+    time_format: int
+    nixie_dots: bool
+    night_mode: bool
+    night_mode_start: int
+    night_mode_end: int
 
 
-def _decode_u8(value: bytearray | bytes) -> int:
-    if not value:
-        raise NoyceJoyceCommunicationError("Clock returned an empty 1-byte value")
-    return int(value[0])
-
-
-def _decode_seconds_since_midnight(value: bytearray | bytes) -> time:
-    if len(value) < 4:
-        raise NoyceJoyceCommunicationError(
-            f"Expected 4 bytes for night-mode time, got {len(value)}"
-        )
-    seconds = struct.unpack_from("<I", value)[0] % 86400
-    hour, remainder = divmod(seconds, 3600)
-    minute, second = divmod(remainder, 60)
-    return time(hour=hour, minute=minute, second=second)
-
-
-def _encode_seconds_since_midnight(value: time) -> bytes:
-    seconds = value.hour * 3600 + value.minute * 60 + value.second
-    return struct.pack("<I", seconds)
-
-
-def _encode_clock_datetime(local_now) -> bytes:
-    """Encode local wall-clock time for the Nixie firmware.
-
-    The firmware converts the received 32-bit value into calendar fields without
-    having a user-configurable timezone. To represent Home Assistant local wall
-    time, encode Unix time plus the current local UTC offset. This matches the
-    firmware's calendar-field conversion and handles daylight-saving changes.
-    """
-    utc_offset = local_now.utcoffset()
-    offset_seconds = int(utc_offset.total_seconds()) if utc_offset else 0
-    timestamp = int(local_now.timestamp()) + offset_seconds
-    if not 0 <= timestamp <= 0xFFFFFFFF:
-        raise ValueError("Clock timestamp is outside the firmware's uint32 range")
-    return struct.pack("<I", timestamp)
-
-
-class NoyceJoyceNixie:
-    """Direct BLE client for a Noyce Joyce Nixie clock."""
+class NixieBLE:
+    """Small BLE client for the Noyce Joyce Nixie Clock."""
 
     def __init__(self, hass: HomeAssistant, address: str, name: str) -> None:
         self.hass = hass
-        self.address = address.upper()
+        self.address = address
         self.name = name
-        self._lock = asyncio.Lock()
+        self._operation_lock = asyncio.Lock()
 
-    def _ble_device(self):
+    async def _connect(self) -> BleakClient:
         device = bluetooth.async_ble_device_from_address(
             self.hass, self.address, connectable=True
         )
         if device is None:
-            raise NoyceJoyceNotFoundError(
-                f"Noyce Joyce Nixie {self.address} is not currently reachable"
+            reason = bluetooth.async_address_reachability_diagnostics(
+                self.hass,
+                self.address,
+                bluetooth.BluetoothReachabilityIntent.CONNECTION,
             )
-        return device
+            raise NixieConnectionError(
+                f"Fant ingen Bluetooth-adapter som kan koble til {self.address}: {reason}"
+            )
 
-    async def _connect(self) -> BleakClient:
-        device = self._ble_device()
-        client = BleakClient(device, timeout=12.0)
         try:
-            await client.connect()
-        except (BleakError, TimeoutError, asyncio.TimeoutError) as err:
-            raise NoyceJoyceCommunicationError(
-                f"Could not connect to {self.name} ({self.address}): {err}"
+            return await establish_connection(
+                BleakClient,
+                device,
+                self.name,
+                max_attempts=3,
+            )
+        except (BleakError, TimeoutError) as err:
+            raise NixieConnectionError(
+                f"Kunne ikke koble til {self.name} ({self.address}): {err}"
             ) from err
-        return client
+
+    @staticmethod
+    def _read_u8(value: bytearray) -> int:
+        if not value:
+            raise ValueError("Tom verdi fra BLE-characteristic")
+        return int(value[0])
+
+    @staticmethod
+    def _read_u32_le(value: bytearray) -> int:
+        if len(value) < 4:
+            raise ValueError(f"For kort 32-bit BLE-verdi: {value.hex()}")
+        return int.from_bytes(value[:4], "little", signed=False)
 
     async def async_read_state(self) -> NixieState:
-        """Read all settings in a single BLE connection."""
-        async with self._lock:
+        """Read all settings in one BLE connection."""
+        async with self._operation_lock:
             client = await self._connect()
             try:
-                time_format = _decode_u8(await client.read_gatt_char(TIME_FORMAT_UUID))
-                hourglass = _decode_u8(await client.read_gatt_char(HOURGLASS_UUID))
-                night_mode = bool(_decode_u8(await client.read_gatt_char(NIGHT_MODE_UUID)))
-                night_on = _decode_seconds_since_midnight(
-                    await client.read_gatt_char(NIGHT_ON_UUID)
-                )
-                night_off = _decode_seconds_since_midnight(
-                    await client.read_gatt_char(NIGHT_OFF_UUID)
-                )
-                nixie_dots = bool(
-                    _decode_u8(await client.read_gatt_char(NIXIE_DOTS_UUID))
-                )
+                firmware_raw = await client.read_gatt_char(FIRMWARE_REVISION_UUID)
+                hourglass_raw = await client.read_gatt_char(HOURGLASS_UUID)
+                time_format_raw = await client.read_gatt_char(TIME_FORMAT_UUID)
+                dots_raw = await client.read_gatt_char(NIXIE_DOTS_UUID)
+                night_raw = await client.read_gatt_char(NIGHT_MODE_UUID)
+                start_raw = await client.read_gatt_char(NIGHT_MODE_START_UUID)
+                end_raw = await client.read_gatt_char(NIGHT_MODE_END_UUID)
 
-                firmware_version: str | None = None
-                try:
-                    fw_raw = await client.read_gatt_char(FIRMWARE_REV_UUID)
-                    firmware_version = bytes(fw_raw).decode("utf-8", errors="replace").strip(
-                        "\x00 "
-                    ) or None
-                except BleakError:
-                    _LOGGER.debug("Firmware revision characteristic could not be read")
+                firmware = bytes(firmware_raw).decode("utf-8", errors="replace").strip("\x00 ")
+                hourglass = self._read_u8(hourglass_raw)
+                time_format = self._read_u8(time_format_raw)
+
+                # Firmware constrains these values. Clamp only for HA display safety.
+                if hourglass not in range(5):
+                    _LOGGER.warning("Unexpected hourglass value from clock: %s", hourglass)
+                if time_format not in (0, 1):
+                    _LOGGER.warning("Unexpected time-format value from clock: %s", time_format)
 
                 return NixieState(
-                    time_format=time_format,
+                    firmware_version=firmware or None,
                     hourglass=hourglass,
-                    night_mode=night_mode,
-                    night_on=night_on,
-                    night_off=night_off,
-                    nixie_dots=nixie_dots,
-                    firmware_version=firmware_version,
+                    time_format=time_format,
+                    nixie_dots=bool(self._read_u8(dots_raw)),
+                    night_mode=bool(self._read_u8(night_raw)),
+                    night_mode_start=self._read_u32_le(start_raw) % 86400,
+                    night_mode_end=self._read_u32_le(end_raw) % 86400,
                 )
-            except (BleakError, TimeoutError, asyncio.TimeoutError) as err:
-                raise NoyceJoyceCommunicationError(
-                    f"Could not read settings from {self.name}: {err}"
+            except (BleakError, TimeoutError, ValueError) as err:
+                raise NixieConnectionError(
+                    f"Kunne ikke lese innstillinger fra {self.name}: {err}"
                 ) from err
             finally:
                 if client.is_connected:
-                    with suppress(BleakError, TimeoutError):
+                    try:
                         await client.disconnect()
+                    except BleakError:
+                        _LOGGER.debug("BLE disconnect failed", exc_info=True)
 
     async def async_write_u8(self, characteristic: str, value: int) -> None:
-        """Write one unsigned byte to a characteristic."""
-        if not 0 <= value <= 255:
-            raise ValueError("u8 value must be between 0 and 255")
-        await self._async_write(characteristic, bytes((value,)))
+        """Write one byte to a clock characteristic."""
+        await self.async_write(characteristic, bytes((value & 0xFF,)))
 
-    async def async_write_time(self, characteristic: str, value: time) -> None:
-        """Write a night-mode time as little-endian seconds since midnight."""
-        await self._async_write(characteristic, _encode_seconds_since_midnight(value))
+    async def async_write_u32(self, characteristic: str, value: int) -> None:
+        """Write a little-endian unsigned 32-bit value."""
+        await self.async_write(
+            characteristic,
+            int(value & 0xFFFFFFFF).to_bytes(4, "little", signed=False),
+        )
 
-    async def async_sync_clock(self) -> None:
-        """Synchronize the clock RTC with Home Assistant's local time."""
-        from homeassistant.util import dt as dt_util
-
-        local_now = dt_util.now()
-        await self._async_write(DATE_TIME_UUID, _encode_clock_datetime(local_now))
-        _LOGGER.info("Synchronized %s to %s", self.name, local_now.isoformat())
-
-    async def _async_write(self, characteristic: str, payload: bytes) -> None:
-        """Write to the clock using a short-lived BLE connection."""
-        async with self._lock:
+    async def async_write(self, characteristic: str, payload: bytes) -> None:
+        """Write a raw payload using a fresh BLE connection."""
+        async with self._operation_lock:
             client = await self._connect()
             try:
+                # The clock exposes its settings as GATT Read + Write characteristics.
                 await client.write_gatt_char(characteristic, payload, response=True)
-            except (BleakError, TimeoutError, asyncio.TimeoutError) as err:
-                raise NoyceJoyceCommunicationError(
-                    f"Could not write to {self.name}: {err}"
+            except (BleakError, TimeoutError) as err:
+                raise NixieConnectionError(
+                    f"Kunne ikke skrive til {self.name}: {err}"
                 ) from err
             finally:
                 if client.is_connected:
-                    with suppress(BleakError, TimeoutError):
+                    try:
                         await client.disconnect()
+                    except BleakError:
+                        _LOGGER.debug("BLE disconnect failed", exc_info=True)

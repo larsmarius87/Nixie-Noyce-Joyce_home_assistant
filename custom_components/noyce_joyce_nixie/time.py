@@ -1,60 +1,70 @@
-"""Time entities for Noyce Joyce Nixie night mode."""
-
-from __future__ import annotations
+"""Time entities for Noyce Joyce Nixie."""
 
 from datetime import time
 
 from homeassistant.components.time import TimeEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import NIGHT_OFF_UUID, NIGHT_ON_UUID
-from .coordinator import NoyceJoyceCoordinator
-from .entity import NoyceJoyceEntity
+from . import NixieConfigEntry
+from .api import NixieConnectionError
+from .entity import NixieEntity
+
+
+def _seconds_to_time(seconds: int) -> time:
+    seconds %= 86400
+    hour, remainder = divmod(seconds, 3600)
+    minute, second = divmod(remainder, 60)
+    return time(hour=hour, minute=minute, second=second)
+
+
+def _time_to_seconds(value: time) -> int:
+    return value.hour * 3600 + value.minute * 60 + value.second
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: NixieConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    coordinator: NoyceJoyceCoordinator = entry.runtime_data
+    coordinator = entry.runtime_data
     async_add_entities(
-        [
-            NightOnTime(coordinator),
-            NightOffTime(coordinator),
-        ]
+        [NightModeStartTime(coordinator), NightModeEndTime(coordinator)]
     )
 
 
-class NightOnTime(NoyceJoyceEntity, TimeEntity):
-    _attr_name = "Nattmodus – display på"
-    _attr_icon = "mdi:weather-sunset-up"
-
-    def __init__(self, coordinator: NoyceJoyceCoordinator) -> None:
-        super().__init__(coordinator, "night_on")
-
-    @property
-    def native_value(self) -> time:
-        return self.coordinator.data.night_on
-
-    async def async_set_value(self, value: time) -> None:
-        await self.coordinator.device.async_write_time(NIGHT_ON_UUID, value)
-        await self._refresh_after_write()
-
-
-class NightOffTime(NoyceJoyceEntity, TimeEntity):
-    _attr_name = "Nattmodus – display av"
+class NightModeStartTime(NixieEntity, TimeEntity):
+    _attr_name = "Nattmodus start"
     _attr_icon = "mdi:weather-sunset-down"
 
-    def __init__(self, coordinator: NoyceJoyceCoordinator) -> None:
-        super().__init__(coordinator, "night_off")
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "night_mode_start")
 
     @property
     def native_value(self) -> time:
-        return self.coordinator.data.night_off
+        return _seconds_to_time(self.coordinator.data.night_mode_start)
 
     async def async_set_value(self, value: time) -> None:
-        await self.coordinator.device.async_write_time(NIGHT_OFF_UUID, value)
-        await self._refresh_after_write()
+        try:
+            await self.coordinator.async_set_night_start(_time_to_seconds(value))
+        except NixieConnectionError as err:
+            raise HomeAssistantError(str(err)) from err
+
+
+class NightModeEndTime(NixieEntity, TimeEntity):
+    _attr_name = "Nattmodus slutt"
+    _attr_icon = "mdi:weather-sunset-up"
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "night_mode_end")
+
+    @property
+    def native_value(self) -> time:
+        return _seconds_to_time(self.coordinator.data.night_mode_end)
+
+    async def async_set_value(self, value: time) -> None:
+        try:
+            await self.coordinator.async_set_night_end(_time_to_seconds(value))
+        except NixieConnectionError as err:
+            raise HomeAssistantError(str(err)) from err

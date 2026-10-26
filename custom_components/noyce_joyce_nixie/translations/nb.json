@@ -1,22 +1,21 @@
 {
   "config": {
     "step": {
-      "bluetooth_confirm": {
-        "title": "Noyce Joyce Nixie funnet",
-        "description": "Legg til {name} i Home Assistant?"
-      },
       "user": {
         "title": "Noyce Joyce Nixie",
-        "description": "Velg klokken Home Assistant har oppdaget via Bluetooth.",
+        "description": "Velg en funnet Nixie Clock. Hvis ingen er funnet kan du skrive inn Bluetooth-adressen manuelt.",
         "data": {
-          "address": "Klokke"
+          "address": "Bluetooth-enhet / adresse"
         }
+      },
+      "confirm": {
+        "title": "Legg til Nixie Clock",
+        "description": "Legg til {name} ({address}) i Home Assistant?"
       }
     },
     "abort": {
-      "already_configured": "Denne klokken er allerede konfigurert.",
-      "no_devices_found": "Fant ingen Noyce Joyce Nixie-klokke. Sørg for at klokken er på og innen Bluetooth-rekkevidde.",
-      "not_supported": "Bluetooth-enheten er ikke en støttet Noyce Joyce Nixie-klokke."
+      "already_configured": "Denne klokken er allerede lagt til.",
+      "not_connectable": "Klokken ble funnet via en Bluetooth-kilde som ikke støtter aktive tilkoblinger."
     }
   }
 }

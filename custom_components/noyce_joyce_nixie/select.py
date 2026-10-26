@@ -1,71 +1,65 @@
 """Select entities for Noyce Joyce Nixie."""
 
-from __future__ import annotations
-
 from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from . import NixieConfigEntry
+from .api import NixieConnectionError
 from .const import (
-    HOURGLASS_FROM_RAW,
     HOURGLASS_OPTIONS,
-    HOURGLASS_UUID,
-    TIME_FORMAT_FROM_RAW,
+    HOURGLASS_VALUES,
     TIME_FORMAT_OPTIONS,
-    TIME_FORMAT_UUID,
+    TIME_FORMAT_VALUES,
 )
-from .coordinator import NoyceJoyceCoordinator
-from .entity import NoyceJoyceEntity
+from .entity import NixieEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: NixieConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    coordinator: NoyceJoyceCoordinator = entry.runtime_data
+    coordinator = entry.runtime_data
     async_add_entities(
-        [
-            TimeFormatSelect(coordinator),
-            HourglassSelect(coordinator),
-        ]
+        [HourglassSelect(coordinator), TimeFormatSelect(coordinator)]
     )
 
 
-class TimeFormatSelect(NoyceJoyceEntity, SelectEntity):
-    _attr_name = "Tidsformat"
-    _attr_icon = "mdi:clock-digital"
-    _attr_options = list(TIME_FORMAT_OPTIONS)
-
-    def __init__(self, coordinator: NoyceJoyceCoordinator) -> None:
-        super().__init__(coordinator, "time_format")
-
-    @property
-    def current_option(self) -> str | None:
-        return TIME_FORMAT_FROM_RAW.get(self.coordinator.data.time_format)
-
-    async def async_select_option(self, option: str) -> None:
-        await self.coordinator.device.async_write_u8(
-            TIME_FORMAT_UUID, TIME_FORMAT_OPTIONS[option]
-        )
-        await self._refresh_after_write()
-
-
-class HourglassSelect(NoyceJoyceEntity, SelectEntity):
-    _attr_name = "Hourglass-intervall"
+class HourglassSelect(NixieEntity, SelectEntity):
+    _attr_name = "Timeglasseffekt"
     _attr_icon = "mdi:timer-sand"
-    _attr_options = list(HOURGLASS_OPTIONS)
+    _attr_options = list(HOURGLASS_OPTIONS.values())
 
-    def __init__(self, coordinator: NoyceJoyceCoordinator) -> None:
+    def __init__(self, coordinator):
         super().__init__(coordinator, "hourglass")
 
     @property
     def current_option(self) -> str | None:
-        return HOURGLASS_FROM_RAW.get(self.coordinator.data.hourglass)
+        return HOURGLASS_OPTIONS.get(self.coordinator.data.hourglass)
 
     async def async_select_option(self, option: str) -> None:
-        await self.coordinator.device.async_write_u8(
-            HOURGLASS_UUID, HOURGLASS_OPTIONS[option]
-        )
-        await self._refresh_after_write()
+        try:
+            await self.coordinator.async_set_hourglass(HOURGLASS_VALUES[option])
+        except (KeyError, NixieConnectionError) as err:
+            raise HomeAssistantError(str(err)) from err
+
+
+class TimeFormatSelect(NixieEntity, SelectEntity):
+    _attr_name = "Timeformat"
+    _attr_icon = "mdi:clock-digital"
+    _attr_options = list(TIME_FORMAT_OPTIONS.values())
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "time_format")
+
+    @property
+    def current_option(self) -> str | None:
+        return TIME_FORMAT_OPTIONS.get(self.coordinator.data.time_format)
+
+    async def async_select_option(self, option: str) -> None:
+        try:
+            await self.coordinator.async_set_time_format(TIME_FORMAT_VALUES[option])
+        except (KeyError, NixieConnectionError) as err:
+            raise HomeAssistantError(str(err)) from err
