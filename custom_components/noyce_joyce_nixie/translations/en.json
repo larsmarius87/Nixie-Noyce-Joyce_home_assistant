@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "bluetooth_confirm": {
+        "title": "Noyce Joyce Nixie found",
+        "description": "Add {name} to Home Assistant?"
+      },
+      "user": {
+        "title": "Noyce Joyce Nixie",
+        "description": "Select the clock discovered by Home Assistant over Bluetooth.",
+        "data": {
+          "address": "Clock"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This clock is already configured.",
+      "no_devices_found": "No Noyce Joyce Nixie clock was found. Make sure it is powered on and within Bluetooth range.",
+      "not_supported": "The Bluetooth device is not a supported Noyce Joyce Nixie clock."
+    }
+  }
+}
