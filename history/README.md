@@ -18,10 +18,17 @@ No standalone packages were created for 0.6.1–0.6.4; development moved from 0.
 
 ## Version branches
 
-The repository also has source snapshots for the versions that already existed in the Git history:
+The repository also has source snapshot branches for every preserved package version:
 
+- `v0.1.0`
+- `v0.2.0`
+- `v0.3.0`
+- `v0.4.0`
+- `v0.5.0`
+- `v0.6.0`
+- `v0.6.5`
 - `v0.6.6`
 - `v0.6.7`
 - `v0.6.8`
 
-The historical files above are kept unchanged from their respective package documentation.
+The historical README and protocol files above are preserved from their respective packages. Source snapshot branches omit generated Python cache files such as `__pycache__`/`.pyc`.
