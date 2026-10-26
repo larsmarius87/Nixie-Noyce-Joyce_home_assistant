@@ -65,6 +65,8 @@ class NixieBLE:
         self.address = address
         self.name = name
         self._operation_lock = asyncio.Lock()
+        self.last_proxy_source: str | None = None
+        self.last_proxy_name: str | None = None
 
     async def _connect(self) -> BleakClient:
         device = bluetooth.async_ble_device_from_address(
@@ -81,12 +83,28 @@ class NixieBLE:
             )
 
         try:
-            return await establish_connection(
+            client = await establish_connection(
                 BleakClient,
                 device,
                 self.name,
                 max_attempts=3,
             )
+
+            # Home Assistant's Bleak wrapper tracks the scanner that actually
+            # carried the successful connection. This may differ from the
+            # scanner that most recently advertised the clock. Keep this
+            # best-effort and guarded so an upstream implementation change
+            # cannot break the integration.
+            scanner = getattr(client, "_connected_scanner", None)
+            if scanner is not None:
+                source = getattr(scanner, "source", None)
+                name = getattr(scanner, "name", None)
+                if source:
+                    self.last_proxy_source = str(source)
+                if name:
+                    self.last_proxy_name = str(name)
+
+            return client
         except (BleakError, TimeoutError) as err:
             raise NixieConnectionError(
                 f"Kunne ikke koble til {self.name} ({self.address}): {err}"
