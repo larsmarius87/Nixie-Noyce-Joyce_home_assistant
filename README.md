@@ -100,6 +100,10 @@ Nye diagnostikksensorer:
 
 - Added local Home Assistant brand artwork (`brand/icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`).
 
+## Version history
+
+Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshots are also available on the `v0.6.6`, `v0.6.7` and `v0.6.8` branches.
+
 ## Changelog
 
 See [`CHANGELOG.md`](CHANGELOG.md) for version history.
