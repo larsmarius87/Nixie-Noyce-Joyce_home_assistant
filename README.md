@@ -1,4 +1,4 @@
-# Noyce Joyce Nixie – Home Assistant v0.6.7
+# Noyce Joyce Nixie – Home Assistant v0.6.8
 
 Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
@@ -22,6 +22,7 @@ Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 - Sensor for neste planlagte hendelse
 - Sensor for sist vellykkede klokkesynk
 - Sensor for sist vellykkede BLE-kontakt
+- Diagnostikksensor for sist brukte Bluetooth-proxy/scanner (MAC-adresse, med navn som attributt når tilgjengelig)
 - Robust BLE-oppstart: integrasjonen blokkerer ikke Home Assistant dersom Bluetooth-proxyen ikke kan koble til ved restart
 
 ## Tidsplanmodus
@@ -81,6 +82,13 @@ Nye diagnostikksensorer:
 - **Tidsplanstatus** – `Bekreftet`, `Kontrollerer`, `Ikke bekreftet – prøver igjen` eller `Enkel modus`.
 - **Programmert intervall** – siste intervall som er lest tilbake og bekreftet, f.eks. `Natt 23:30–06:30`.
 - **Sist tidsplan bekreftet** – tidspunkt for siste vellykkede read-back-verifisering.
+
+## v0.6.8
+
+- Added **Sist brukt Bluetooth-proxy** diagnostic sensor.
+- Sensor state is the source/MAC of the scanner that carried the most recent successful BLE connection.
+- Proxy/scanner name is exposed as an attribute when available.
+- The last known proxy remains visible while the clock is temporarily unavailable.
 
 ## v0.6.7
 
