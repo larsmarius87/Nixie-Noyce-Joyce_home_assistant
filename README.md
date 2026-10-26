@@ -102,7 +102,7 @@ Nye diagnostikksensorer:
 
 ## Version history
 
-Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshots are also available on the `v0.6.6`, `v0.6.7` and `v0.6.8` branches.
+Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7` and `v0.6.8`.
 
 ## Changelog
 
