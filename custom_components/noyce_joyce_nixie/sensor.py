@@ -33,6 +33,7 @@ async def async_setup_entry(
             NextScheduleEventSensor(coordinator),
             LastSyncSensor(coordinator),
             LastContactSensor(coordinator),
+            LastBluetoothProxySensor(coordinator),
         ]
     )
 
@@ -247,3 +248,28 @@ class LastContactSensor(NixieEntity, SensorEntity):
     @property
     def native_value(self) -> datetime | None:
         return self.coordinator.last_contact
+
+
+class LastBluetoothProxySensor(NixieEntity, SensorEntity):
+    """Show the scanner/proxy used for the most recent successful BLE connection."""
+
+    _attr_name = "Sist brukt Bluetooth-proxy"
+    _attr_icon = "mdi:bluetooth-transfer"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "last_bluetooth_proxy")
+
+    @property
+    def available(self) -> bool:
+        # Keep the last known source visible even while the clock is offline.
+        return True
+
+    @property
+    def native_value(self) -> str | None:
+        return self.coordinator.api.last_proxy_source
+
+    @property
+    def extra_state_attributes(self):
+        name = self.coordinator.api.last_proxy_name
+        return {"navn": name} if name else {}
