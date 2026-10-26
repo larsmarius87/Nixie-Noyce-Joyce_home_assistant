@@ -1,42 +1,35 @@
-# Noyce Joyce Nixie – Home Assistant custom integration
+# Noyce Joyce Nixie – Home Assistant v0.5.0
 
-Built by reverse engineering the official Noyce Joyce Nixie Android app (1.0.7) and its bundled firmware (1.17).
+Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
-## Supported in v0.4.0
+## Funksjoner
 
-- Clock synchronization from Home Assistant
-- **Auto-sync on/off** as a configuration switch
-- **Adjustable daily auto-sync time** (default 04:05 local Home Assistant time)
-- Manual **Synchronize clock** button
-- Nixie dots: on/off
-- Night mode: on/off
-- Night-mode display ON time
-- Night-mode display OFF time
-- Time format: 24 h / 12 h
-- Hourglass / anti-poisoning interval: Off / 1 min / 10 min / 30 min / 60 min
-- Firmware version diagnostic sensor
+- Synkroniser klokke manuelt
+- Automatisk daglig klokkesynk med justerbart tidspunkt
+- Automatisk retry hvert 10. minutt dersom klokkesynk feiler på grunn av BLE
+- 12/24-timersformat
+- Nixie-prikker
+- Nattmodus
+- Klokkens egne nattmodus start/slutt-tider
+- Timeglasseffekt / anti-poisoning
+- Avansert tidsplan med egne tider for ukedag og helg
+- Valgfritt dagtidsavslag mandag–fredag
+- Automatisk programmering av neste relevante av/på-vindu til klokkens ene interne nattmodusintervall
+- Retry hvert 5. minutt dersom tidsplanen ikke kan programmeres over BLE
+- Sensor for neste planlagte hendelse
+- Sensor for sist vellykkede klokkesynk
+- Sensor for sist vellykkede BLE-kontakt
 
-The integration communicates locally and directly over Bluetooth LE. No cloud service is used.
+## Tidsplanmodus
 
-## Install
+`Enkel` er standard og lar klokka bruke sitt vanlige nattmodusintervall akkurat som før.
 
-1. Copy the folder `custom_components/noyce_joyce_nixie` to `/config/custom_components/noyce_joyce_nixie` in Home Assistant.
-2. Restart Home Assistant.
-3. Keep the Nixie clock powered on and in Bluetooth range.
-4. Home Assistant should discover `Nixie Clock`. If not, go to **Settings → Devices & services → Add integration → Noyce Joyce Nixie**.
+`Ukedag / helg` lar Home Assistant programmere neste relevante intervall til klokka. Helgeprofilen velges etter morgenen/display-på-dagen. Det betyr at fredag kveld bruker helgetiden for lørdag morgen, mens søndag kveld bruker ukedagstiden for mandag morgen.
 
-## Automatic synchronization
+Dagtidsavslag gjelder mandag–fredag. Siden klokkens firmware bare kan lagre ett nattmodusintervall om gangen, programmerer Home Assistant automatisk neste intervall etter at det forrige er ferdig. Klokka utfører selve av/på-hendelsen lokalt når intervallet allerede er programmert.
 
-Automatic synchronization is enabled by default and runs daily at **04:05** using Home Assistant's local time zone. Both the enable/disable switch and synchronization time are exposed on the Nixie device as configuration entities and are persisted across Home Assistant restarts.
+## Oppgradering
 
-The manual **Synchronize clock** button remains available regardless of the auto-sync setting.
+Kopier `custom_components/noyce_joyce_nixie` over eksisterende mappe og start Home Assistant på nytt.
 
-## Hourglass Off mapping
-
-Firmware 1.17 does not expose a true disabled state for the hourglass / anti-poisoning effect. In Home Assistant, **Off** maps to firmware value `4`, which is the least frequent mode: once per day. The clock firmware normally runs that effect around 03:00.
-
-## Notes
-
-- The clock uses an nRF52 BLE controller and the custom GATT service `A8ED1400-130A-4D4B-ACBA-5DE7E77E9B47`.
-- Settings are read every 5 minutes; writes are applied immediately.
-- Clock synchronization uses Home Assistant local time, including the current UTC offset, so DST changes are corrected automatically at the next synchronization.
+Eksisterende innstillinger fra v0.4 beholdes. Avansert tidsplan starter i `Enkel`, så den endrer ikke klokkas oppførsel før du velger `Ukedag / helg`.

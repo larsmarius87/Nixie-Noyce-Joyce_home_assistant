@@ -22,6 +22,7 @@ async def async_setup_entry(
             NixieDotsSwitch(coordinator),
             NightModeSwitch(coordinator),
             AutoSyncSwitch(coordinator),
+            DaytimeScheduleSwitch(coordinator),
         ]
     )
 
@@ -75,8 +76,6 @@ class NightModeSwitch(NixieEntity, SwitchEntity):
 
 
 class AutoSyncSwitch(NixieEntity, SwitchEntity):
-    """Enable or disable Home Assistant's daily clock synchronization."""
-
     _attr_name = "Auto-synk"
     _attr_icon = "mdi:clock-check-outline"
     _attr_entity_category = EntityCategory.CONFIG
@@ -98,4 +97,31 @@ class AutoSyncSwitch(NixieEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs) -> None:
         await self.coordinator.async_set_auto_sync_enabled(False)
+        self.async_write_ha_state()
+
+
+class DaytimeScheduleSwitch(NixieEntity, SwitchEntity):
+    """Enable a second display-off interval during weekdays."""
+
+    _attr_name = "Dagtidsavslag (man–fre)"
+    _attr_icon = "mdi:weather-sunny-off"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "daytime_schedule")
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.daytime_enabled
+
+    async def async_turn_on(self, **kwargs) -> None:
+        await self.coordinator.async_set_daytime_enabled(True)
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self.coordinator.async_set_daytime_enabled(False)
         self.async_write_ha_state()

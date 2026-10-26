@@ -132,6 +132,38 @@ class NixieBLE:
                     except BleakError:
                         _LOGGER.debug("BLE disconnect failed", exc_info=True)
 
+
+    async def async_program_night_mode(
+        self, enabled: bool, start_seconds: int, end_seconds: int
+    ) -> None:
+        """Program night-mode enabled state and both times in one BLE connection."""
+        async with self._operation_lock:
+            client = await self._connect()
+            try:
+                await client.write_gatt_char(
+                    NIGHT_MODE_UUID, bytes((int(enabled),)), response=True
+                )
+                await client.write_gatt_char(
+                    NIGHT_MODE_START_UUID,
+                    int(start_seconds % 86400).to_bytes(4, "little", signed=False),
+                    response=True,
+                )
+                await client.write_gatt_char(
+                    NIGHT_MODE_END_UUID,
+                    int(end_seconds % 86400).to_bytes(4, "little", signed=False),
+                    response=True,
+                )
+            except (BleakError, TimeoutError) as err:
+                raise NixieConnectionError(
+                    f"Kunne ikke programmere nattmodus på {self.name}: {err}"
+                ) from err
+            finally:
+                if client.is_connected:
+                    try:
+                        await client.disconnect()
+                    except BleakError:
+                        _LOGGER.debug("BLE disconnect failed", exc_info=True)
+
     async def async_write_u8(self, characteristic: str, value: int) -> None:
         """Write one byte to a clock characteristic."""
         await self.async_write(characteristic, bytes((value & 0xFF,)))

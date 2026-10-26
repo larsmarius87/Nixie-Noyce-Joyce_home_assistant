@@ -24,8 +24,37 @@ FIRMWARE_REVISION_UUID = "00002a26-0000-1000-8000-00805f9b34fb"
 
 CONF_AUTO_SYNC_ENABLED = "auto_sync_enabled"
 CONF_AUTO_SYNC_TIME = "auto_sync_time"
+CONF_LAST_SYNC_AT = "last_sync_at"
 DEFAULT_AUTO_SYNC_ENABLED = True
 DEFAULT_AUTO_SYNC_TIME = "04:05:00"
+
+CONF_SCHEDULE_MODE = "schedule_mode"
+CONF_SIMPLE_NIGHT_MODE_ENABLED = "simple_night_mode_enabled"
+CONF_SIMPLE_NIGHT_START_TIME = "simple_night_start_time"
+CONF_SIMPLE_NIGHT_END_TIME = "simple_night_end_time"
+SCHEDULE_MODE_SIMPLE = "simple"
+SCHEDULE_MODE_WEEKDAY_WEEKEND = "weekday_weekend"
+SCHEDULE_MODE_OPTIONS = {
+    SCHEDULE_MODE_SIMPLE: "Enkel",
+    SCHEDULE_MODE_WEEKDAY_WEEKEND: "Ukedag / helg",
+}
+SCHEDULE_MODE_VALUES = {label: value for value, label in SCHEDULE_MODE_OPTIONS.items()}
+
+CONF_WEEKDAY_OFF_TIME = "weekday_off_time"
+CONF_WEEKDAY_ON_TIME = "weekday_on_time"
+CONF_WEEKEND_OFF_TIME = "weekend_off_time"
+CONF_WEEKEND_ON_TIME = "weekend_on_time"
+CONF_DAYTIME_ENABLED = "daytime_enabled"
+CONF_DAYTIME_OFF_TIME = "daytime_off_time"
+CONF_DAYTIME_ON_TIME = "daytime_on_time"
+
+DEFAULT_DAYTIME_ENABLED = False
+DEFAULT_DAYTIME_OFF_TIME = "08:30:00"
+DEFAULT_DAYTIME_ON_TIME = "15:00:00"
+
+SCHEDULE_RETRY_DELAY = timedelta(minutes=5)
+SYNC_RETRY_DELAY = timedelta(minutes=10)
+SCHEDULE_END_GRACE = timedelta(seconds=10)
 
 HOURGLASS_OPTIONS = {
     0: "Hvert minutt",
