@@ -39,3 +39,7 @@ class NoyceJoyceCoordinator(DataUpdateCoordinator[NixieState]):
             return await self.device.async_read_state()
         except NoyceJoyceError as err:
             raise UpdateFailed(str(err)) from err
+
+    async def async_sync_clock(self) -> None:
+        """Synchronize the physical clock to Home Assistant local time."""
+        await self.device.async_sync_clock()

@@ -16,6 +16,7 @@ from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
 
 from .const import (
+    DATE_TIME_UUID,
     FIRMWARE_REV_UUID,
     HOURGLASS_UUID,
     NIGHT_MODE_UUID,
@@ -73,6 +74,22 @@ def _decode_seconds_since_midnight(value: bytearray | bytes) -> time:
 def _encode_seconds_since_midnight(value: time) -> bytes:
     seconds = value.hour * 3600 + value.minute * 60 + value.second
     return struct.pack("<I", seconds)
+
+
+def _encode_clock_datetime(local_now) -> bytes:
+    """Encode local wall-clock time for the Nixie firmware.
+
+    The firmware converts the received 32-bit value into calendar fields without
+    having a user-configurable timezone. To represent Home Assistant local wall
+    time, encode Unix time plus the current local UTC offset. This matches the
+    firmware's calendar-field conversion and handles daylight-saving changes.
+    """
+    utc_offset = local_now.utcoffset()
+    offset_seconds = int(utc_offset.total_seconds()) if utc_offset else 0
+    timestamp = int(local_now.timestamp()) + offset_seconds
+    if not 0 <= timestamp <= 0xFFFFFFFF:
+        raise ValueError("Clock timestamp is outside the firmware's uint32 range")
+    return struct.pack("<I", timestamp)
 
 
 class NoyceJoyceNixie:
@@ -159,6 +176,14 @@ class NoyceJoyceNixie:
     async def async_write_time(self, characteristic: str, value: time) -> None:
         """Write a night-mode time as little-endian seconds since midnight."""
         await self._async_write(characteristic, _encode_seconds_since_midnight(value))
+
+    async def async_sync_clock(self) -> None:
+        """Synchronize the clock RTC with Home Assistant's local time."""
+        from homeassistant.util import dt as dt_util
+
+        local_now = dt_util.now()
+        await self._async_write(DATE_TIME_UUID, _encode_clock_datetime(local_now))
+        _LOGGER.info("Synchronized %s to %s", self.name, local_now.isoformat())
 
     async def _async_write(self, characteristic: str, payload: bytes) -> None:
         """Write to the clock using a short-lived BLE connection."""

@@ -1,7 +1,7 @@
 {
   "domain": "noyce_joyce_nixie",
   "name": "Noyce Joyce Nixie",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "config_flow": true,
   "dependencies": ["bluetooth_adapters"],
   "documentation": "https://play.google.com/store/apps/details?id=com.noycejoyce.noycejoycenixie",
