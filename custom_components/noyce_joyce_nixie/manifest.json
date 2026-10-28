@@ -1,7 +1,7 @@
 {
   "domain": "noyce_joyce_nixie",
   "name": "Noyce Joyce Nixie",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "config_flow": true,
   "dependencies": [
     "bluetooth_adapters"
