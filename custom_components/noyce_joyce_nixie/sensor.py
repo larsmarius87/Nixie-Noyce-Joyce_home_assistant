@@ -271,5 +271,14 @@ class LastBluetoothProxySensor(NixieEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self):
-        name = self.coordinator.api.last_proxy_name
-        return {"navn": name} if name else {}
+        api = self.coordinator.api
+        attrs = {
+            "rssi_ved_tilkobling": api.last_proxy_rssi,
+            "antall_kandidater": api.last_candidate_count,
+            "fallbacks": api.last_connection_fallbacks,
+            "kildevalg": api.last_source_discovery_method,
+            "kandidater": list(api.last_candidate_details),
+        }
+        if api.last_proxy_name:
+            attrs["navn"] = api.last_proxy_name
+        return attrs
