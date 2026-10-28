@@ -30,5 +30,6 @@ The repository also has source snapshot branches for every preserved package ver
 - `v0.6.6`
 - `v0.6.7`
 - `v0.6.8`
+- `v0.6.9`
 
 The historical README and protocol files above are preserved from their respective packages. Source snapshot branches omit generated Python cache files such as `__pycache__`/`.pyc`.
