@@ -1,4 +1,4 @@
-# Noyce Joyce Nixie – Home Assistant v0.6.8
+# Noyce Joyce Nixie – Home Assistant v0.6.9
 
 Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
@@ -24,6 +24,7 @@ Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 - Sensor for sist vellykkede BLE-kontakt
 - Diagnostikksensor for sist brukte Bluetooth-proxy/scanner (MAC-adresse, med navn som attributt når tilgjengelig)
 - Robust BLE-oppstart: integrasjonen blokkerer ikke Home Assistant dersom Bluetooth-proxyen ikke kan koble til ved restart
+- Automatisk multi-proxyvalg: rangerer ferske og cachede Bluetooth-kilder etter RSSI og prøver neste kilde ved feil
 
 ## Tidsplanmodus
 
@@ -38,6 +39,22 @@ Dagtidsavslag gjelder mandag–fredag. Siden klokkens firmware bare kan lagre et
 Kopier `custom_components/noyce_joyce_nixie` over eksisterende mappe og start Home Assistant på nytt.
 
 Eksisterende innstillinger fra v0.4 beholdes. Avansert tidsplan starter i `Enkel`, så den endrer ikke klokkas oppførsel før du velger `Ukedag / helg`.
+
+## Multi-proxy Bluetooth-valg (v0.6.9)
+
+Fra v0.6.9 bruker Nixie-integrasjonen samme grunnprinsipp for Bluetooth-kildevalg som Xzense 0.5.24:
+
+1. Samler ferske annonseringer for klokkens MAC fra alle Home Assistant-scannere/proxyer i et kort vindu.
+2. Supplerer med Home Assistants kildebestemte scanner-cache dersom en proxy ikke annonserte akkurat i innsamlingsvinduet.
+3. Rangerer kandidatene strengt etter RSSI, sterkeste først.
+4. Fersk observasjon fra en kilde overstyrer cache fra samme kilde.
+5. Prøver opptil seks ulike Bluetooth-kilder, ett BLE-forsøk per kilde.
+6. Hvis sterkeste kilde feiler, prøves neste kandidat automatisk.
+7. Eksisterende 30-sekunders coordinator-retry brukes dersom ingen kandidat lykkes.
+
+Ingen proxy er hardkodet eller låst. Hvis `bluetooth proxy stue` fysisk er nærmest klokka, skal den normalt velges automatisk når den også har sterkest RSSI.
+
+Diagnostikksensoren **Sist brukt Bluetooth-proxy** viser fortsatt MAC/source for siste vellykkede BLE-forbindelse og har fra v0.6.9 også attributter for scanner-navn, RSSI ved tilkobling, antall kandidater, antall fallbacks, kildevalg og kandidatlisten.
 
 ## Robust BLE-oppstart (v0.6.7)
 
@@ -83,6 +100,15 @@ Nye diagnostikksensorer:
 - **Programmert intervall** – siste intervall som er lest tilbake og bekreftet, f.eks. `Natt 23:30–06:30`.
 - **Sist tidsplan bekreftet** – tidspunkt for siste vellykkede read-back-verifisering.
 
+## v0.6.9
+
+- Added automatic multi-proxy Bluetooth source selection based on the proven Xzense 0.5.24 strategy.
+- Collects per-scanner fresh advertisements and supplements them with Home Assistant's source-specific scanner cache.
+- Ranks candidates strictly by RSSI and tries the next source when a BLE connection fails.
+- Tries at most six sources per connection round and one Bleak connection attempt per source.
+- Expanded `Sist brukt Bluetooth-proxy` diagnostics with RSSI, candidate count, fallback count, discovery method and ranked candidate details.
+- Keeps the v0.6.7 30-second coordinator retry when no Bluetooth source succeeds.
+
 ## v0.6.8
 
 - Added **Sist brukt Bluetooth-proxy** diagnostic sensor.
@@ -102,7 +128,7 @@ Nye diagnostikksensorer:
 
 ## Version history
 
-Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7` and `v0.6.8`.
+Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8` and `v0.6.9`.
 
 ## Changelog
 
