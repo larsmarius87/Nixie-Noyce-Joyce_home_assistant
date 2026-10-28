@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from bleak import BleakClient
+from bleak.backends.device import BLEDevice
 from bleak.exc import BleakError
 from bleak_retry_connector import establish_connection
 from homeassistant.components import bluetooth
@@ -57,6 +58,21 @@ class NightModeSettings:
     end_seconds: int
 
 
+@dataclass(frozen=True, slots=True)
+class BluetoothCandidate:
+    """One source-specific Home Assistant Bluetooth connection candidate."""
+
+    source: str
+    scanner_name: str | None
+    rssi: int
+    ble_device: BLEDevice
+    fresh: bool
+
+
+ADVERTISEMENT_COLLECTION_SECONDS = 3.0
+MAX_BLUETOOTH_CANDIDATES = 6
+
+
 class NixieBLE:
     """Small BLE client for the Noyce Joyce Nixie Clock."""
 
@@ -67,48 +83,149 @@ class NixieBLE:
         self._operation_lock = asyncio.Lock()
         self.last_proxy_source: str | None = None
         self.last_proxy_name: str | None = None
+        self.last_proxy_rssi: int | None = None
+        self.last_candidate_count = 0
+        self.last_connection_fallbacks = 0
+        self.last_source_discovery_method: str | None = None
+        self.last_candidate_details: tuple[str, ...] = ()
 
-    async def _connect(self) -> BleakClient:
-        device = bluetooth.async_ble_device_from_address(
+    async def _collect_bluetooth_candidates(self) -> list[BluetoothCandidate]:
+        """Collect fresh and cached source-specific BLE devices, ranked by RSSI."""
+        fresh: dict[str, BluetoothCandidate] = {}
+
+        def _advertisement_received(service_info) -> None:
+            if not service_info.connectable:
+                return
+            source = str(service_info.source)
+            rssi = int(service_info.rssi)
+            current = fresh.get(source)
+            if current is None or rssi > current.rssi:
+                fresh[source] = BluetoothCandidate(
+                    source=source,
+                    scanner_name=None,
+                    rssi=rssi,
+                    ble_device=service_info.device,
+                    fresh=True,
+                )
+
+        cancel = bluetooth.async_register_advertisement_callback(
+            self.hass, _advertisement_received, self.address
+        )
+        try:
+            # As in the Xzense multi-proxy strategy, give every scanner a short
+            # window to report the device instead of accepting only HA's single
+            # currently preferred BLEDevice.
+            await asyncio.sleep(ADVERTISEMENT_COLLECTION_SECONDS)
+        finally:
+            cancel()
+
+        cached_devices = bluetooth.async_scanner_devices_by_address(
             self.hass, self.address, connectable=True
         )
-        if device is None:
+        scanner_names = {
+            str(item.scanner.source): str(item.scanner.name)
+            for item in cached_devices
+            if getattr(item.scanner, "source", None)
+        }
+
+        # Fill scanner names for fresh observations from the per-scanner cache.
+        candidates: dict[str, BluetoothCandidate] = {}
+        for source, candidate in fresh.items():
+            candidates[source] = BluetoothCandidate(
+                source=source,
+                scanner_name=scanner_names.get(source),
+                rssi=candidate.rssi,
+                ble_device=candidate.ble_device,
+                fresh=True,
+            )
+
+        # Cache is fallback only. A fresh observation from the same source always
+        # wins, even if the cached RSSI happens to be higher.
+        for item in cached_devices:
+            source = str(item.scanner.source)
+            if source in candidates:
+                continue
+            candidates[source] = BluetoothCandidate(
+                source=source,
+                scanner_name=str(item.scanner.name) if item.scanner.name else None,
+                rssi=int(item.advertisement.rssi),
+                ble_device=item.ble_device,
+                fresh=False,
+            )
+
+        ranked = sorted(candidates.values(), key=lambda item: item.rssi, reverse=True)[
+            :MAX_BLUETOOTH_CANDIDATES
+        ]
+        self.last_candidate_count = len(ranked)
+        self.last_candidate_details = tuple(
+            f"{item.source} {item.rssi} dBm ({'fersk' if item.fresh else 'cache'})"
+            for item in ranked
+        )
+        if fresh and len(fresh) == len(ranked):
+            self.last_source_discovery_method = "fersk annonsering"
+        elif fresh:
+            self.last_source_discovery_method = "fersk annonsering + cache"
+        elif ranked:
+            self.last_source_discovery_method = "cache"
+        else:
+            self.last_source_discovery_method = None
+
+        _LOGGER.debug(
+            "Nixie BLE candidates for %s: %s",
+            self.address,
+            ", ".join(self.last_candidate_details) or "none",
+        )
+        return ranked
+
+    async def _connect(self) -> BleakClient:
+        candidates = await self._collect_bluetooth_candidates()
+        if not candidates:
             reason = bluetooth.async_address_reachability_diagnostics(
                 self.hass,
                 self.address,
                 bluetooth.BluetoothReachabilityIntent.CONNECTION,
             )
             raise NixieConnectionError(
-                f"Fant ingen Bluetooth-adapter som kan koble til {self.address}: {reason}"
+                f"Ingen Bluetooth-proxy ser {self.address} akkurat nå: {reason}"
             )
 
-        try:
-            client = await establish_connection(
-                BleakClient,
-                device,
-                self.name,
-                max_attempts=3,
+        errors: list[str] = []
+        for index, candidate in enumerate(candidates):
+            try:
+                client = await establish_connection(
+                    BleakClient,
+                    candidate.ble_device,
+                    self.name,
+                    max_attempts=1,
+                )
+            except (BleakError, TimeoutError) as err:
+                errors.append(f"{candidate.source}: {err}")
+                _LOGGER.debug(
+                    "Nixie BLE connection failed via %s (%s dBm); trying next source",
+                    candidate.source,
+                    candidate.rssi,
+                )
+                continue
+
+            self.last_proxy_source = candidate.source
+            self.last_proxy_name = candidate.scanner_name
+            self.last_proxy_rssi = candidate.rssi
+            self.last_connection_fallbacks = index
+            _LOGGER.debug(
+                "Nixie BLE connected via %s (%s, %s dBm) after %s fallback(s)",
+                candidate.source,
+                candidate.scanner_name or "ukjent scanner",
+                candidate.rssi,
+                index,
             )
-
-            # Home Assistant's Bleak wrapper tracks the scanner that actually
-            # carried the successful connection. This may differ from the
-            # scanner that most recently advertised the clock. Keep this
-            # best-effort and guarded so an upstream implementation change
-            # cannot break the integration.
-            scanner = getattr(client, "_connected_scanner", None)
-            if scanner is not None:
-                source = getattr(scanner, "source", None)
-                name = getattr(scanner, "name", None)
-                if source:
-                    self.last_proxy_source = str(source)
-                if name:
-                    self.last_proxy_name = str(name)
-
             return client
-        except (BleakError, TimeoutError) as err:
-            raise NixieConnectionError(
-                f"Kunne ikke koble til {self.name} ({self.address}): {err}"
-            ) from err
+
+        self.last_connection_fallbacks = max(0, len(candidates) - 1)
+        detail = "; ".join(errors)
+        raise NixieConnectionError(
+            f"Kunne ikke koble til {self.name} ({self.address}) via "
+            f"{len(candidates)} Bluetooth-kilde(r): {detail}"
+        )
 
     @staticmethod
     def _read_u8(value: bytearray) -> int:
