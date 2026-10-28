@@ -2,6 +2,18 @@
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
+## 0.6.9
+
+- Replaced the single cached `async_ble_device_from_address()` lookup with automatic multi-proxy source selection.
+- Uses Home Assistant `async_register_advertisement_callback()` to collect fresh per-scanner advertisements for the clock.
+- Supplements fresh observations with `async_scanner_devices_by_address()` source-specific cache entries.
+- Ranks candidates strictly by RSSI, strongest first.
+- Fresh observations override cache entries from the same scanner.
+- Tries up to six Bluetooth sources per connection round and falls back to the next source on connection failure.
+- Uses one Bleak connection attempt per source to avoid nested/aggressive retry loops.
+- Preserves the v0.6.7 coordinator-level 30-second retry if all sources fail or the clock is temporarily not seen.
+- Expanded `Sist brukt Bluetooth-proxy` attributes with RSSI at connection, candidate count, fallback count, source discovery method, and ranked candidate details.
+
 ## 0.6.8
 
 - Added `Sist brukt Bluetooth-proxy` diagnostic sensor.
