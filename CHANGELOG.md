@@ -2,6 +2,15 @@
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
+## 0.6.11
+
+- Added configurable regular Bluetooth polling interval from 1 to 360 minutes.
+- Added `Bluetooth-oppdateringsintervall` number entity in minutes.
+- Default regular polling interval remains 5 minutes.
+- Interval changes are persisted and applied immediately by rescheduling DataUpdateCoordinator polling.
+- Renamed the automatic clock synchronization interval entity from `Synkintervall` to `Tidssynk-intervall` to avoid confusion with BLE polling.
+- Preserved the separate 30-second retry after failed coordinator BLE reads.
+
 ## 0.6.10
 
 - Added configurable automatic clock synchronization interval from 1 to 24 hours.

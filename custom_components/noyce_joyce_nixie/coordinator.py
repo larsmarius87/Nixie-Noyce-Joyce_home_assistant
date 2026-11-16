@@ -17,6 +17,7 @@ from .const import (
     CONF_AUTO_SYNC_ENABLED,
     CONF_AUTO_SYNC_TIME,
     CONF_AUTO_SYNC_INTERVAL_HOURS,
+    CONF_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
     CONF_DAYTIME_ENABLED,
     CONF_DAYTIME_OFF_TIME,
     CONF_DAYTIME_ON_TIME,
@@ -34,12 +35,15 @@ from .const import (
     DEFAULT_AUTO_SYNC_ENABLED,
     DEFAULT_AUTO_SYNC_TIME,
     DEFAULT_AUTO_SYNC_INTERVAL_HOURS,
+    DEFAULT_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
     DEFAULT_DAYTIME_ENABLED,
     DEFAULT_DAYTIME_OFF_TIME,
     DEFAULT_DAYTIME_ON_TIME,
     HOURGLASS_UUID,
     MAX_AUTO_SYNC_INTERVAL_HOURS,
+    MAX_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
     MIN_AUTO_SYNC_INTERVAL_HOURS,
+    MIN_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
     NIGHT_MODE_END_UUID,
     NIGHT_MODE_START_UUID,
     NIGHT_MODE_UUID,
@@ -69,12 +73,25 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
     """Coordinate BLE reads, writes, clock sync and advanced scheduling."""
 
     def __init__(self, hass, api: NixieBLE, entry: ConfigEntry) -> None:
+        raw_interval = entry.options.get(
+            CONF_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
+            DEFAULT_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
+        )
+        try:
+            interval_minutes = int(round(float(raw_interval)))
+        except (TypeError, ValueError):
+            interval_minutes = DEFAULT_BLUETOOTH_UPDATE_INTERVAL_MINUTES
+        interval_minutes = max(
+            MIN_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
+            min(MAX_BLUETOOTH_UPDATE_INTERVAL_MINUTES, interval_minutes),
+        )
+
         super().__init__(
             hass,
             _LOGGER,
             config_entry=entry,
             name=api.name,
-            update_interval=UPDATE_INTERVAL,
+            update_interval=timedelta(minutes=interval_minutes),
         )
         self.api = api
         self.entry = entry
@@ -174,6 +191,21 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         options[key] = value
         self.hass.config_entries.async_update_entry(self.entry, options=options)
         self.async_update_listeners()
+
+    @property
+    def bluetooth_update_interval_minutes(self) -> int:
+        raw = self.entry.options.get(
+            CONF_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
+            DEFAULT_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
+        )
+        try:
+            value = int(round(float(raw)))
+        except (TypeError, ValueError):
+            value = DEFAULT_BLUETOOTH_UPDATE_INTERVAL_MINUTES
+        return max(
+            MIN_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
+            min(MAX_BLUETOOTH_UPDATE_INTERVAL_MINUTES, value),
+        )
 
     @property
     def auto_sync_enabled(self) -> bool:
@@ -463,6 +495,19 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         except NixieConnectionError:
             _LOGGER.debug("Nixie clock synchronization retry failed")
             self._schedule_sync_retry()
+
+    async def async_set_bluetooth_update_interval_minutes(self, value: int) -> None:
+        interval = max(
+            MIN_BLUETOOTH_UPDATE_INTERVAL_MINUTES,
+            min(MAX_BLUETOOTH_UPDATE_INTERVAL_MINUTES, int(round(value))),
+        )
+        await self._async_set_option(CONF_BLUETOOTH_UPDATE_INTERVAL_MINUTES, interval)
+
+        # DataUpdateCoordinator supports changing update_interval at runtime.
+        # Reschedule immediately so the new interval applies from now, without
+        # requiring a Home Assistant or integration restart.
+        self.update_interval = timedelta(minutes=interval)
+        self._schedule_refresh()
 
     async def async_set_auto_sync_enabled(self, enabled: bool) -> None:
         await self._async_set_option(CONF_AUTO_SYNC_ENABLED, bool(enabled))

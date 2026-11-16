@@ -1,4 +1,4 @@
-# Noyce Joyce Nixie – Home Assistant v0.6.10
+# Noyce Joyce Nixie – Home Assistant v0.6.11
 
 Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
@@ -25,6 +25,7 @@ Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 - Diagnostikksensor for sist brukte Bluetooth-proxy/scanner (MAC-adresse, med navn som attributt når tilgjengelig)
 - Robust BLE-oppstart: integrasjonen blokkerer ikke Home Assistant dersom Bluetooth-proxyen ikke kan koble til ved restart
 - Automatisk multi-proxyvalg: rangerer ferske og cachede Bluetooth-kilder etter RSSI og prøver neste kilde ved feil
+- Justerbart Bluetooth-oppdateringsintervall fra 1 til 360 minutter, standard 5 minutter
 
 ## Tidsplanmodus
 
@@ -52,11 +53,23 @@ Kopier `custom_components/noyce_joyce_nixie` over eksisterende mappe og start Ho
 
 Eksisterende innstillinger fra v0.4 beholdes. Avansert tidsplan starter i `Enkel`, så den endrer ikke klokkas oppførsel før du velger `Ukedag / helg`.
 
-## Justerbart synkintervall (v0.6.10)
+## Bluetooth-oppdateringsintervall (v0.6.11)
+
+**Bluetooth-oppdateringsintervall** styrer hvor ofte Home Assistant gjør den ordinære BLE-tilkoblingen til Nixie-klokka for å lese status og RTC.
+
+- Område: **1–360 minutter**
+- Trinn: **1 minutt**
+- Standard: **5 minutter**
+- Endringer lagres i config entry og beholdes etter restart.
+- Ny verdi tas i bruk umiddelbart ved at coordinatorens neste polling planlegges på nytt.
+- 30-sekunders retry ved en mislykket BLE-avlesning er separat og beholdes uendret.
+- Tids-synkronisering er separat og heter **Tidssynk-intervall**.
+
+## Justerbart tidssynkintervall (v0.6.10)
 
 - **Auto-synk** slår automatisk klokkesynk av/på.
 - **Tidspunkt for auto-synk** brukes som start/ankertidspunkt før første vellykkede automatiske synk.
-- **Synkintervall** kan settes fra **1 til 24 timer** i hele timer. Standard er **24 timer**.
+- **Tidssynk-intervall** kan settes fra **1 til 24 timer** i hele timer. Standard er **24 timer**.
 - Etter en vellykket automatisk synk planlegges neste synk etter valgt intervall.
 - Manuell **Synkroniser klokke** endrer ikke den automatiske intervallplanen.
 - Hvis en automatisk synk feiler over Bluetooth, beholdes eksisterende retry etter **10 minutter**.
@@ -93,11 +106,11 @@ Oppførselen er nå:
 5. Når klokka blir tilgjengelig, går entitetene automatisk tilbake til normal tilstand.
 6. Avansert tidsplan/scheduler venter med BLE-programmering til minst én gyldig avlesning fra klokka er mottatt. Dette hindrer parallelle connect-forsøk ved oppstart.
 
-Dette endrer ikke vanlig polling etter at klokka er tilgjengelig; normal coordinator-oppdatering er fortsatt hvert 5. minutt.
+Fra v0.6.11 er vanlig polling justerbar med **Bluetooth-oppdateringsintervall** fra 1 til 360 minutter. Standard er fortsatt 5 minutter.
 
 ## RTC / drift measurement (v0.6.0)
 
-The integration now attempts to read the clock's own RTC value from the Date/Time characteristic on every normal coordinator refresh (5 minutes). Two diagnostic sensors are exposed:
+The integration attempts to read the clock's own RTC value from the Date/Time characteristic on every normal coordinator refresh. From v0.6.11 the refresh interval is configurable from 1 to 360 minutes (default 5 minutes). Two diagnostic sensors are exposed:
 
 - **Klokkens tid** – the wall-clock time returned by the Nixie clock at the last read.
 - **Klokkeavvik** – difference in seconds between the Nixie RTC and Home Assistant at the BLE read midpoint. Positive values mean the Nixie clock is ahead.
@@ -114,13 +127,22 @@ I avansert `Ukedag / helg`-modus er scheduler-logikken nå bekreftelsesbasert:
 4. Integrasjonen leser deretter de tre verdiene tilbake fra klokka og sammenligner dem med det som skulle programmeres.
 5. Kun en bekreftet match regnes som vellykket. Ved BLE-feil eller mismatch prøves det på nytt etter 5 minutter.
 
-Den ordinære coordinator-oppdateringen hvert 5. minutt er fortsatt en **lesing** av klokkas tilstand/RTC. Scheduler-verdiene sendes ikke på nytt hvert 5. minutt når de allerede er bekreftet.
+Den ordinære coordinator-oppdateringen er fortsatt en **lesing** av klokkas tilstand/RTC. Fra v0.6.11 er intervallet justerbart fra 1 til 360 minutter. Scheduler-verdiene sendes ikke på nytt hvert 5. minutt når de allerede er bekreftet.
 
 Nye diagnostikksensorer:
 
 - **Tidsplanstatus** – `Bekreftet`, `Kontrollerer`, `Ikke bekreftet – prøver igjen` eller `Enkel modus`.
 - **Programmert intervall** – siste intervall som er lest tilbake og bekreftet, f.eks. `Natt 23:30–06:30`.
 - **Sist tidsplan bekreftet** – tidspunkt for siste vellykkede read-back-verifisering.
+
+## v0.6.11
+
+- Added **Bluetooth-oppdateringsintervall** configuration from 1 to 360 minutes.
+- Default BLE polling interval remains 5 minutes.
+- Changing the interval reschedules DataUpdateCoordinator polling immediately without requiring a restart.
+- The setting is persisted in the config entry.
+- Renamed the v0.6.10 automatic clock synchronization number from **Synkintervall** to **Tidssynk-intervall** to distinguish it from BLE polling.
+- Existing 30-second BLE failure retry remains unchanged.
 
 ## v0.6.10
 
@@ -161,7 +183,7 @@ Nye diagnostikksensorer:
 
 ## Version history
 
-Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8`, `v0.6.9` and `v0.6.10`.
+Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8`, `v0.6.9`, `v0.6.10` and `v0.6.11`.
 
 ## Changelog
 
