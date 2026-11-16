@@ -16,6 +16,7 @@ PLATFORMS: list[Platform] = [
     Platform.TIME,
     Platform.BUTTON,
     Platform.SENSOR,
+    Platform.NUMBER,
 ]
 
 type NixieConfigEntry = ConfigEntry[NixieCoordinator]

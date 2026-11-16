@@ -2,6 +2,19 @@
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
+## 0.6.10
+
+- Added configurable automatic clock synchronization interval from 1 to 24 hours.
+- Default interval is 24 hours, preserving previous behavior.
+- Added `Synkintervall` number entity in hours.
+- The configured auto-sync time acts as the initial anchor; subsequent automatic runs use the selected interval.
+- Manual synchronization does not change the automatic interval cadence.
+- Changing the auto-sync anchor time resets the cadence so the new time is respected.
+- Existing 10-minute BLE retry after failed automatic synchronization is preserved.
+- Added `hacs.json` and HACS validation workflow.
+- Added hassfest validation workflow.
+- Added `documentation`, `issue_tracker`, `codeowners`, and `integration_type` to `manifest.json` for HACS/public repository readiness.
+
 ## 0.6.9
 
 - Replaced the single cached `async_ble_device_from_address()` lookup with automatic multi-proxy source selection.

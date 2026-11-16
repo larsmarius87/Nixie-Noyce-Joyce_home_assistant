@@ -1,7 +1,7 @@
 {
   "domain": "noyce_joyce_nixie",
   "name": "Noyce Joyce Nixie",
-  "version": "0.6.9",
+  "version": "0.6.10",
   "config_flow": true,
   "dependencies": [
     "bluetooth_adapters"
@@ -16,5 +16,11 @@
       "connectable": true
     }
   ],
-  "iot_class": "local_polling"
+  "iot_class": "local_polling",
+  "documentation": "https://github.com/larsmarius87/Nixie-Noyce-Joyce_home_assistant",
+  "issue_tracker": "https://github.com/larsmarius87/Nixie-Noyce-Joyce_home_assistant/issues",
+  "codeowners": [
+    "@larsmarius87"
+  ],
+  "integration_type": "device"
 }

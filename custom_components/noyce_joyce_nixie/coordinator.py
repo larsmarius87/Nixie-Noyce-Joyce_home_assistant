@@ -16,10 +16,12 @@ from .api import NightModeSettings, NixieBLE, NixieConnectionError, NixieState
 from .const import (
     CONF_AUTO_SYNC_ENABLED,
     CONF_AUTO_SYNC_TIME,
+    CONF_AUTO_SYNC_INTERVAL_HOURS,
     CONF_DAYTIME_ENABLED,
     CONF_DAYTIME_OFF_TIME,
     CONF_DAYTIME_ON_TIME,
     CONF_LAST_SYNC_AT,
+    CONF_LAST_AUTO_SYNC_AT,
     CONF_SCHEDULE_MODE,
     CONF_SIMPLE_NIGHT_END_TIME,
     CONF_SIMPLE_NIGHT_MODE_ENABLED,
@@ -31,10 +33,13 @@ from .const import (
     DATE_TIME_UUID,
     DEFAULT_AUTO_SYNC_ENABLED,
     DEFAULT_AUTO_SYNC_TIME,
+    DEFAULT_AUTO_SYNC_INTERVAL_HOURS,
     DEFAULT_DAYTIME_ENABLED,
     DEFAULT_DAYTIME_OFF_TIME,
     DEFAULT_DAYTIME_ON_TIME,
     HOURGLASS_UUID,
+    MAX_AUTO_SYNC_INTERVAL_HOURS,
+    MIN_AUTO_SYNC_INTERVAL_HOURS,
     NIGHT_MODE_END_UUID,
     NIGHT_MODE_START_UUID,
     NIGHT_MODE_UUID,
@@ -177,6 +182,33 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
     @property
     def auto_sync_time(self) -> time:
         return self._option_time(CONF_AUTO_SYNC_TIME, DEFAULT_AUTO_SYNC_TIME)
+
+    @property
+    def auto_sync_interval_hours(self) -> int:
+        raw = self.entry.options.get(
+            CONF_AUTO_SYNC_INTERVAL_HOURS, DEFAULT_AUTO_SYNC_INTERVAL_HOURS
+        )
+        try:
+            value = int(round(float(raw)))
+        except (TypeError, ValueError):
+            value = DEFAULT_AUTO_SYNC_INTERVAL_HOURS
+        return max(
+            MIN_AUTO_SYNC_INTERVAL_HOURS,
+            min(MAX_AUTO_SYNC_INTERVAL_HOURS, value),
+        )
+
+    @property
+    def last_auto_sync_at(self) -> datetime | None:
+        raw = self.entry.options.get(CONF_LAST_AUTO_SYNC_AT)
+        if not raw:
+            return None
+        try:
+            value = datetime.fromisoformat(str(raw))
+        except ValueError:
+            return None
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=dt_util.UTC)
+        return value.astimezone(dt_util.UTC)
 
     @property
     def last_sync_at(self) -> datetime | None:
@@ -357,13 +389,36 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
             return
 
         now = dt_util.now()
-        next_run = datetime.combine(now.date(), self.auto_sync_time, tzinfo=now.tzinfo)
-        if next_run <= now:
-            next_run = datetime.combine(
-                now.date() + timedelta(days=1), self.auto_sync_time, tzinfo=now.tzinfo
-            )
+        interval = timedelta(hours=self.auto_sync_interval_hours)
+        last_auto_sync = self.last_auto_sync_at
 
-        _LOGGER.debug("Next Nixie automatic clock sync scheduled for %s", next_run)
+        if last_auto_sync is None:
+            # Before the first successful automatic synchronization, use the
+            # configured time-of-day as the anchor.
+            next_run = datetime.combine(
+                now.date(), self.auto_sync_time, tzinfo=now.tzinfo
+            )
+            if next_run <= now:
+                next_run = datetime.combine(
+                    now.date() + timedelta(days=1),
+                    self.auto_sync_time,
+                    tzinfo=now.tzinfo,
+                )
+        else:
+            # Once automatic synchronization has succeeded, preserve a true
+            # interval independent of manual syncs. Calculate in UTC to avoid
+            # DST transitions stretching or shortening the selected interval.
+            now_utc = dt_util.utcnow()
+            next_run_utc = last_auto_sync + interval
+            while next_run_utc <= now_utc:
+                next_run_utc += interval
+            next_run = dt_util.as_local(next_run_utc)
+
+        _LOGGER.debug(
+            "Next Nixie automatic clock sync scheduled for %s (interval %sh)",
+            next_run,
+            self.auto_sync_interval_hours,
+        )
         self._unsub_auto_sync = async_track_point_in_time(
             self.hass, self._handle_auto_sync, next_run
         )
@@ -375,7 +430,7 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
 
     async def _async_auto_sync_and_reschedule(self) -> None:
         try:
-            await self.async_sync_clock()
+            await self.async_sync_clock(auto=True)
             _LOGGER.debug("Automatic Nixie clock synchronization completed")
         except NixieConnectionError:
             _LOGGER.warning(
@@ -403,7 +458,7 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         if not self.auto_sync_enabled:
             return
         try:
-            await self.async_sync_clock()
+            await self.async_sync_clock(auto=True)
             _LOGGER.info("Nixie clock synchronization retry succeeded")
         except NixieConnectionError:
             _LOGGER.debug("Nixie clock synchronization retry failed")
@@ -415,7 +470,20 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
 
     async def async_set_auto_sync_time(self, value: time) -> None:
         clean_value = value.replace(tzinfo=None)
-        await self._async_set_option(CONF_AUTO_SYNC_TIME, clean_value.isoformat())
+        options = dict(self.entry.options)
+        options[CONF_AUTO_SYNC_TIME] = clean_value.isoformat()
+        # Changing the anchor time intentionally resets the automatic cadence.
+        options.pop(CONF_LAST_AUTO_SYNC_AT, None)
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
+        self.async_update_listeners()
+        self._schedule_auto_sync()
+
+    async def async_set_auto_sync_interval_hours(self, value: int) -> None:
+        interval = max(
+            MIN_AUTO_SYNC_INTERVAL_HOURS,
+            min(MAX_AUTO_SYNC_INTERVAL_HOURS, int(round(value))),
+        )
+        await self._async_set_option(CONF_AUTO_SYNC_INTERVAL_HOURS, interval)
         self._schedule_auto_sync()
 
     # ---------------------------------------------------------------------
@@ -768,7 +836,7 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         self._record_contact()
         self.async_set_updated_data(replace(self.data, night_mode_end=seconds))
 
-    async def async_sync_clock(self) -> None:
+    async def async_sync_clock(self, *, auto: bool = False) -> None:
         """Synchronize the clock to Home Assistant local wall time."""
         now = dt_util.now()
         offset = now.utcoffset()
@@ -778,7 +846,10 @@ class NixieCoordinator(DataUpdateCoordinator[NixieState]):
         self._record_contact()
 
         options = dict(self.entry.options)
-        options[CONF_LAST_SYNC_AT] = dt_util.utcnow().isoformat()
+        synced_at = dt_util.utcnow()
+        options[CONF_LAST_SYNC_AT] = synced_at.isoformat()
+        if auto:
+            options[CONF_LAST_AUTO_SYNC_AT] = synced_at.isoformat()
         self.hass.config_entries.async_update_entry(self.entry, options=options)
         self.async_update_listeners()
 

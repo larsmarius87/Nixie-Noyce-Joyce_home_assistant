@@ -1,11 +1,11 @@
-# Noyce Joyce Nixie – Home Assistant v0.6.9
+# Noyce Joyce Nixie – Home Assistant v0.6.10
 
 Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
 ## Funksjoner
 
 - Synkroniser klokke manuelt
-- Automatisk daglig klokkesynk med justerbart tidspunkt
+- Automatisk klokkesynk med justerbart tidspunkt og intervall på 1–24 timer
 - Automatisk retry hvert 10. minutt dersom klokkesynk feiler på grunn av BLE
 - 12/24-timersformat
 - Nixie-prikker
@@ -34,11 +34,33 @@ Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
 Dagtidsavslag gjelder mandag–fredag. Siden klokkens firmware bare kan lagre ett nattmodusintervall om gangen, programmerer Home Assistant automatisk neste intervall etter at det forrige er ferdig. Klokka utfører selve av/på-hendelsen lokalt når intervallet allerede er programmert.
 
+## Installere med HACS
+
+Repoet er klargjort som en HACS-integrasjon. Når GitHub-repoet er satt til **Public**, kan det legges til i HACS som et egendefinert repository:
+
+1. Åpne **HACS → Integrasjoner**.
+2. Åpne menyen og velg **Egendefinerte repositories / Custom repositories**.
+3. Legg inn `https://github.com/larsmarius87/Nixie-Noyce-Joyce_home_assistant`.
+4. Velg kategori **Integration**.
+5. Installer **Noyce Joyce Nixie** og restart Home Assistant.
+
+For å bli søkbar som et standardrepository i HACS Marketplace kreves i tillegg en full GitHub Release og innsending til `hacs/default`.
+
 ## Oppgradering
 
 Kopier `custom_components/noyce_joyce_nixie` over eksisterende mappe og start Home Assistant på nytt.
 
 Eksisterende innstillinger fra v0.4 beholdes. Avansert tidsplan starter i `Enkel`, så den endrer ikke klokkas oppførsel før du velger `Ukedag / helg`.
+
+## Justerbart synkintervall (v0.6.10)
+
+- **Auto-synk** slår automatisk klokkesynk av/på.
+- **Tidspunkt for auto-synk** brukes som start/ankertidspunkt før første vellykkede automatiske synk.
+- **Synkintervall** kan settes fra **1 til 24 timer** i hele timer. Standard er **24 timer**.
+- Etter en vellykket automatisk synk planlegges neste synk etter valgt intervall.
+- Manuell **Synkroniser klokke** endrer ikke den automatiske intervallplanen.
+- Hvis en automatisk synk feiler over Bluetooth, beholdes eksisterende retry etter **10 minutter**.
+- Endrer du **Tidspunkt for auto-synk**, nullstilles intervallets anker slik at det nye tidspunktet brukes.
 
 ## Multi-proxy Bluetooth-valg (v0.6.9)
 
@@ -100,6 +122,17 @@ Nye diagnostikksensorer:
 - **Programmert intervall** – siste intervall som er lest tilbake og bekreftet, f.eks. `Natt 23:30–06:30`.
 - **Sist tidsplan bekreftet** – tidspunkt for siste vellykkede read-back-verifisering.
 
+## v0.6.10
+
+- Added adjustable **Synkintervall** configuration from 1 to 24 hours.
+- Default interval remains 24 hours.
+- The configured auto-sync time is used as the initial anchor.
+- After a successful automatic synchronization, future runs follow the selected interval.
+- Manual clock synchronization does not shift the automatic schedule.
+- Automatic retries after BLE failures still run after 10 minutes.
+- Added HACS metadata, HACS validation workflow and hassfest workflow.
+- Added required HACS manifest metadata: documentation, issue tracker and code owner.
+
 ## v0.6.9
 
 - Added automatic multi-proxy Bluetooth source selection based on the proven Xzense 0.5.24 strategy.
@@ -128,7 +161,7 @@ Nye diagnostikksensorer:
 
 ## Version history
 
-Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8` and `v0.6.9`.
+Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8`, `v0.6.9` and `v0.6.10`.
 
 ## Changelog
 
