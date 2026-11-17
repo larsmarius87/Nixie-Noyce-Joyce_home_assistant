@@ -70,6 +70,7 @@ class BluetoothCandidate:
 
 
 ADVERTISEMENT_COLLECTION_SECONDS = 3.0
+ACTIVE_SCAN_SECONDS = 3.0
 MAX_BLUETOOTH_CANDIDATES = 6
 
 
@@ -111,17 +112,40 @@ class NixieBLE:
         cancel = bluetooth.async_register_advertisement_callback(
             self.hass, _advertisement_received, self.address
         )
+        active_scan_requested = False
         try:
             # As in the Xzense multi-proxy strategy, give every scanner a short
             # window to report the device instead of accepting only HA's single
             # currently preferred BLEDevice.
             await asyncio.sleep(ADVERTISEMENT_COLLECTION_SECONDS)
+
+            cached_devices = bluetooth.async_scanner_devices_by_address(
+                self.hass, self.address, connectable=True
+            )
+
+            # If HA has neither a fresh advertisement nor a source-specific
+            # cache entry, request one short bus-wide active scan before giving
+            # up. This is an advertisement scan only; it does not open a GATT
+            # connection to the clock. Keep the advertisement callback active
+            # during the sweep so observations from every scanner are captured.
+            if not fresh and not cached_devices:
+                request_active_scan = getattr(
+                    bluetooth, "async_request_active_scan", None
+                )
+                if request_active_scan is not None:
+                    active_scan_requested = True
+                    _LOGGER.debug(
+                        "No Nixie Bluetooth source currently sees %s; "
+                        "requesting %.1fs active scan",
+                        self.address,
+                        ACTIVE_SCAN_SECONDS,
+                    )
+                    await request_active_scan(self.hass, ACTIVE_SCAN_SECONDS)
+                    cached_devices = bluetooth.async_scanner_devices_by_address(
+                        self.hass, self.address, connectable=True
+                    )
         finally:
             cancel()
-
-        cached_devices = bluetooth.async_scanner_devices_by_address(
-            self.hass, self.address, connectable=True
-        )
         scanner_names = {
             str(item.scanner.source): str(item.scanner.name)
             for item in cached_devices
@@ -161,7 +185,15 @@ class NixieBLE:
             f"{item.source} {item.rssi} dBm ({'fersk' if item.fresh else 'cache'})"
             for item in ranked
         )
-        if fresh and len(fresh) == len(ranked):
+        if active_scan_requested and fresh and len(fresh) == len(ranked):
+            self.last_source_discovery_method = "aktiv scan: fersk annonsering"
+        elif active_scan_requested and fresh:
+            self.last_source_discovery_method = "aktiv scan: fersk annonsering + cache"
+        elif active_scan_requested and ranked:
+            self.last_source_discovery_method = "aktiv scan: cache"
+        elif active_scan_requested:
+            self.last_source_discovery_method = "aktiv scan: ingen treff"
+        elif fresh and len(fresh) == len(ranked):
             self.last_source_discovery_method = "fersk annonsering"
         elif fresh:
             self.last_source_discovery_method = "fersk annonsering + cache"
