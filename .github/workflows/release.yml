@@ -33,34 +33,30 @@ jobs:
         run: |
           set -euo pipefail
 
-          versions=(
-            v0.1.0
-            v0.2.0
-            v0.3.0
-            v0.4.0
-            v0.5.0
-            v0.6.0
-            v0.6.5
-            v0.6.6
-            v0.6.7
-            v0.6.8
-            v0.6.9
-            v0.6.10
-            v0.6.11
-            v0.6.12
+          current_version="$(python -c 'import json; print(json.load(open("custom_components/noyce_joyce_nixie/manifest.json"))["version"])')"
+          current_tag="v$current_version"
+
+          mapfile -t versions < <(
+            git for-each-ref --format='%(refname:short)' refs/remotes/origin/v*               | sed 's#^origin/##'               | sort -V
           )
+
+          if ! printf '%s
+' "${versions[@]}" | grep -Fxq "$current_tag"; then
+            versions+=("$current_tag")
+          fi
 
           mkdir -p "$GITHUB_WORKSPACE/dist"
 
           for tag in "${versions[@]}"; do
-            ref="origin/$tag"
+            if [ "$tag" = "$current_tag" ]; then
+              ref="$GITHUB_SHA"
+            else
+              ref="origin/$tag"
+            fi
             sha="$(git rev-parse "$ref")"
 
             if ! gh release view "$tag" >/dev/null 2>&1; then
-              gh release create "$tag" \
-                --target "$sha" \
-                --title "Noyce Joyce Nixie $tag" \
-                --notes "Arkivert utgave av Noyce Joyce Nixie Home Assistant-integrasjonen. Se vedlagt CHANGELOG.md for full versjonshistorikk."
+              gh release create "$tag"                 --target "$sha"                 --title "Noyce Joyce Nixie $tag"                 --notes "Arkivert utgave av Noyce Joyce Nixie Home Assistant-integrasjonen. Se vedlagt CHANGELOG.md for versjonshistorikk."
             fi
 
             worktree="$RUNNER_TEMP/nixie-$tag"
@@ -68,7 +64,8 @@ jobs:
             git worktree add --detach "$worktree" "$ref" >/dev/null
 
             asset="$GITHUB_WORKSPACE/dist/noyce_joyce_nixie_ha_$tag.zip"
-            rm -f "$asset"
+            changelog_asset="$GITHUB_WORKSPACE/dist/CHANGELOG-$tag.md"
+            rm -f "$asset" "$changelog_asset"
 
             (
               cd "$worktree"
@@ -79,16 +76,17 @@ jobs:
                   zip -q -u "$asset" "$file"
                 fi
               done
+
+              if [ -f CHANGELOG.md ]; then
+                cp CHANGELOG.md "$changelog_asset"
+              else
+                cp "$GITHUB_WORKSPACE/CHANGELOG.md" "$changelog_asset"
+              fi
             )
 
             git worktree remove --force "$worktree"
 
-            gh release upload "$tag" \
-              "$asset" \
-              "$GITHUB_WORKSPACE/CHANGELOG.md" \
-              --clobber
+            gh release upload "$tag"               "$asset"               "$changelog_asset#CHANGELOG.md"               --clobber
           done
 
-          # Ensure the newest preserved release remains GitHub's Latest release
-          # even though older releases may have been backfilled in this run.
-          gh release edit v0.6.12 --latest
+          gh release edit "$current_tag" --latest
