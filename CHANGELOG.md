@@ -2,6 +2,14 @@
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
+## 0.6.13
+
+- Added duplicate suppression for automatic Bluetooth discovery when a Nixie clock is rediscovered with a different BLE address.
+- Automatic duplicate suppression requires the known Nixie service UUID and, when a local name is present, the expected `Nixie Clock` name.
+- Prevents multiple simultaneous automatic discovery confirmation flows for the same Nixie device type.
+- Existing config entries keep their stored Bluetooth address; discovery does not silently replace it.
+- Manual setup remains available so users with multiple physical Nixie clocks can still add another device intentionally.
+
 ## 0.6.12
 
 - Added an on-demand Home Assistant active Bluetooth scan when neither fresh advertisements nor source-specific scanner cache entries exist for the Nixie clock.
