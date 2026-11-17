@@ -1,4 +1,4 @@
-# Noyce Joyce Nixie – Home Assistant v0.6.11
+# Noyce Joyce Nixie – Home Assistant v0.6.12
 
 Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
@@ -25,6 +25,7 @@ Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 - Diagnostikksensor for sist brukte Bluetooth-proxy/scanner (MAC-adresse, med navn som attributt når tilgjengelig)
 - Robust BLE-oppstart: integrasjonen blokkerer ikke Home Assistant dersom Bluetooth-proxyen ikke kan koble til ved restart
 - Automatisk multi-proxyvalg: rangerer ferske og cachede Bluetooth-kilder etter RSSI og prøver neste kilde ved feil
+- Aktiv BLE-scan ved manglende annonsering: gjør én kort engangsprobe før integrasjonen konkluderer med at ingen proxy ser klokka
 - Justerbart Bluetooth-oppdateringsintervall fra 1 til 360 minutter, standard 5 minutter
 
 ## Tidsplanmodus
@@ -52,6 +53,20 @@ For å bli søkbar som et standardrepository i HACS Marketplace kreves i tillegg
 Kopier `custom_components/noyce_joyce_nixie` over eksisterende mappe og start Home Assistant på nytt.
 
 Eksisterende innstillinger fra v0.4 beholdes. Avansert tidsplan starter i `Enkel`, så den endrer ikke klokkas oppførsel før du velger `Ukedag / helg`.
+
+## Aktiv BLE-scan ved manglende annonsering (v0.6.12)
+
+Når ingen Home Assistant-scanner/proxy har en fersk annonsering eller en kildebestemt cacheoppføring for Nixie-klokka, gjør integrasjonen nå én ekstra engangsprobe før den gir opp:
+
+1. Den vanlige 3-sekunders innsamlingen av annonseringer kjøres først.
+2. Hvis både ferske observasjoner og scanner-cache er tomme, ber integrasjonen Home Assistant om en kort aktiv BLE-scan.
+3. Advertisement-callbacken holdes aktiv under scanningen, slik at observasjoner fra alle proxyer kan bli kandidater.
+4. Kandidatlisten bygges på nytt og rangeres fortsatt etter RSSI som før.
+5. Hvis klokka fortsatt ikke annonserer, returneres vanlig tilkoblingsfeil og eksisterende retry-logikk overtar.
+
+Den aktive scanningen er **ikke en GATT-tilkobling til klokka**. Den brukes bare for å forsøke å oppdage en annonsering som passiv/AUTO scanning ikke hadde fanget akkurat da. Multi-proxyvalg, ett connect-forsøk per kilde og øvrig BLE-logikk er ellers uendret.
+
+Diagnostikkfeltet `kildevalg` viser `aktiv scan: ...` når denne ekstra proben ble brukt.
 
 ## Bluetooth-oppdateringsintervall (v0.6.11)
 
@@ -135,6 +150,14 @@ Nye diagnostikksensorer:
 - **Programmert intervall** – siste intervall som er lest tilbake og bekreftet, f.eks. `Natt 23:30–06:30`.
 - **Sist tidsplan bekreftet** – tidspunkt for siste vellykkede read-back-verifisering.
 
+## v0.6.12
+
+- Added one short Home Assistant active Bluetooth scan when no proxy has a fresh advertisement or source-specific cache entry for the clock.
+- Keeps the per-scanner advertisement callback active during the active scan so observations from all Bluetooth sources can be collected.
+- Rebuilds and RSSI-ranks the multi-proxy candidate list after the active scan.
+- Does not open an extra GATT connection merely to scan; existing connection and retry behavior remains unchanged.
+- Diagnostic `kildevalg` now indicates when the active-scan fallback was used.
+
 ## v0.6.11
 
 - Added **Bluetooth-oppdateringsintervall** configuration from 1 to 360 minutes.
@@ -183,7 +206,7 @@ Nye diagnostikksensorer:
 
 ## Version history
 
-Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8`, `v0.6.9`, `v0.6.10` and `v0.6.11`.
+Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8`, `v0.6.9`, `v0.6.10`, `v0.6.11` and `v0.6.12`.
 
 ## Changelog
 
