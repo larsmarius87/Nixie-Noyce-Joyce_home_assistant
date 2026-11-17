@@ -48,6 +48,7 @@ jobs:
             v0.6.10
             v0.6.11
             v0.6.12
+            v0.6.13
           )
 
           mkdir -p "$GITHUB_WORKSPACE/dist"
@@ -91,4 +92,4 @@ jobs:
 
           # Ensure the newest preserved release remains GitHub's Latest release
           # even though older releases may have been backfilled in this run.
-          gh release edit v0.6.12 --latest
+          gh release edit v0.6.13 --latest
