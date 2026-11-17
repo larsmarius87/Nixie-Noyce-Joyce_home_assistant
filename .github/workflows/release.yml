@@ -1,4 +1,4 @@
-name: Publish version release
+name: Publish version releases
 
 on:
   push:
@@ -18,36 +18,77 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Read integration version
-        id: version
+      - name: Fetch preserved version branches
         shell: bash
         run: |
-          VERSION=$(python -c 'import json; print(json.load(open("custom_components/noyce_joyce_nixie/manifest.json"))["version"])')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          git fetch --prune origin '+refs/heads/v*:refs/remotes/origin/v*'
 
-      - name: Verify version is not already released
-        id: existing
+      - name: Publish preserved versions and assets
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
         shell: bash
         run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          set -euo pipefail
 
-      - name: Create GitHub release
-        if: steps.existing.outputs.exists != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
-        shell: bash
-        run: |
-          gh release create "$TAG" \
-            --target "$GITHUB_SHA" \
-            --title "Noyce Joyce Nixie $TAG" \
-            --generate-notes
+          versions=(
+            v0.1.0
+            v0.2.0
+            v0.3.0
+            v0.4.0
+            v0.5.0
+            v0.6.0
+            v0.6.5
+            v0.6.6
+            v0.6.7
+            v0.6.8
+            v0.6.9
+            v0.6.10
+            v0.6.11
+            v0.6.12
+          )
+
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+
+          for tag in "${versions[@]}"; do
+            ref="origin/$tag"
+            sha="$(git rev-parse "$ref")"
+
+            if ! gh release view "$tag" >/dev/null 2>&1; then
+              gh release create "$tag" \
+                --target "$sha" \
+                --title "Noyce Joyce Nixie $tag" \
+                --notes "Arkivert utgave av Noyce Joyce Nixie Home Assistant-integrasjonen. Se vedlagt CHANGELOG.md for full versjonshistorikk."
+            fi
+
+            worktree="$RUNNER_TEMP/nixie-$tag"
+            rm -rf "$worktree"
+            git worktree add --detach "$worktree" "$ref" >/dev/null
+
+            asset="$GITHUB_WORKSPACE/dist/noyce_joyce_nixie_ha_$tag.zip"
+            rm -f "$asset"
+
+            (
+              cd "$worktree"
+              zip -qr "$asset" custom_components/noyce_joyce_nixie
+
+              for file in README.md PROTOCOL.md CHANGELOG.md hacs.json; do
+                if [ -f "$file" ]; then
+                  zip -q -u "$asset" "$file"
+                fi
+              done
+            )
+
+            git worktree remove --force "$worktree"
+
+            gh release upload "$tag" \
+              "$asset" \
+              "$GITHUB_WORKSPACE/CHANGELOG.md" \
+              --clobber
+          done
+
+          # Ensure the newest preserved release remains GitHub's Latest release
+          # even though older releases may have been backfilled in this run.
+          gh release edit v0.6.12 --latest
