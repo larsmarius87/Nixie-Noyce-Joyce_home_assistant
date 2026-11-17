@@ -8,8 +8,21 @@ from homeassistant import config_entries
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
 from homeassistant.const import CONF_ADDRESS
+from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 
 from .const import DOMAIN, NAME, SERVICE_UUID
+
+
+def _is_nixie_discovery(discovery_info: BluetoothServiceInfoBleak) -> bool:
+    """Return True for the Nixie BLE identity used for duplicate suppression."""
+    service_uuids = {uuid.lower() for uuid in discovery_info.service_uuids}
+    if SERVICE_UUID.lower() not in service_uuids:
+        return False
+
+    # Some scanner backends can occasionally omit the local name. When it is
+    # present, require the known Noyce Joyce name in addition to the service UUID.
+    name = (discovery_info.name or "").strip().casefold()
+    return not name or name == "nixie clock"
 
 
 class NixieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -24,6 +37,20 @@ class NixieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle Bluetooth discovery."""
         if not discovery_info.connectable:
             return self.async_abort(reason="not_connectable")
+
+        # The clock can occasionally be rediscovered with another BLE address.
+        # Automatic discovery should not create duplicate Nixie entries or
+        # multiple simultaneous confirmation flows for the same physical clock.
+        # Manual setup remains available for users who intentionally have more
+        # than one Nixie clock.
+        if _is_nixie_discovery(discovery_info) and (
+            self._async_current_entries(include_ignore=False)
+            or self._async_in_progress(include_uninitialized=True)
+        ):
+            return self.async_abort(
+                reason="single_instance_allowed",
+                translation_domain=HOMEASSISTANT_DOMAIN,
+            )
 
         await self.async_set_unique_id(discovery_info.address)
         self._abort_if_unique_id_configured()
