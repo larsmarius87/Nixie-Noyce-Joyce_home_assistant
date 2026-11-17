@@ -2,6 +2,15 @@
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
+## 0.6.12
+
+- Added an on-demand Home Assistant active Bluetooth scan when neither fresh advertisements nor source-specific scanner cache entries exist for the Nixie clock.
+- The existing advertisement callback remains registered during the active scan so observations from all scanners/proxies are captured.
+- Candidate discovery is repeated after the scan and continues to rank sources strictly by RSSI.
+- Active scanning does not establish a GATT connection to the clock; normal multi-proxy connection behavior is unchanged.
+- Added diagnostic source labels showing when the active-scan fallback was used.
+- Existing coordinator retry timing and automatic time-sync retry behavior remain unchanged.
+
 ## 0.6.11
 
 - Added configurable regular Bluetooth polling interval from 1 to 360 minutes.
