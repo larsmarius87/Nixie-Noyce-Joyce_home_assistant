@@ -1,4 +1,4 @@
-# Noyce Joyce Nixie – Home Assistant v0.6.12
+# Noyce Joyce Nixie – Home Assistant v0.6.13
 
 Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 
@@ -26,6 +26,7 @@ Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
 - Robust BLE-oppstart: integrasjonen blokkerer ikke Home Assistant dersom Bluetooth-proxyen ikke kan koble til ved restart
 - Automatisk multi-proxyvalg: rangerer ferske og cachede Bluetooth-kilder etter RSSI og prøver neste kilde ved feil
 - Aktiv BLE-scan ved manglende annonsering: gjør én kort engangsprobe før integrasjonen konkluderer med at ingen proxy ser klokka
+- Duplikatbeskyttelse for automatisk Bluetooth-discovery når samme klokke dukker opp med en annen BLE-adresse
 - Justerbart Bluetooth-oppdateringsintervall fra 1 til 360 minutter, standard 5 minutter
 
 ## Tidsplanmodus
@@ -53,6 +54,16 @@ For å bli søkbar som et standardrepository i HACS Marketplace kreves i tillegg
 Kopier `custom_components/noyce_joyce_nixie` over eksisterende mappe og start Home Assistant på nytt.
 
 Eksisterende innstillinger fra v0.4 beholdes. Avansert tidsplan starter i `Enkel`, så den endrer ikke klokkas oppførsel før du velger `Ukedag / helg`.
+
+## Duplikatbeskyttelse ved BLE-discovery (v0.6.13)
+
+Nixie-klokka kan i enkelte situasjoner bli oppdaget med en annen Bluetooth-adresse enn den som allerede er konfigurert. Fra v0.6.13 undertrykker integrasjonen slike nye **automatiske** discovery-forslag når en Nixie allerede finnes i Home Assistant.
+
+- Automatisk discovery bruker riktig Nixie-service-UUID og, når navnet er tilgjengelig, `Nixie Clock` som ekstra identitetskontroll.
+- Hvis en Nixie allerede er konfigurert, opprettes ikke en ny automatisk config flow selv om discovery-adressen er annerledes.
+- Flere samtidige automatiske discovery-forslag for samme Nixie-type undertrykkes også.
+- Eksisterende config entry og lagret Bluetooth-adresse endres ikke automatisk.
+- **Manuell legg-til** er fortsatt tilgjengelig og kan brukes dersom man faktisk har flere Nixie-klokker.
 
 ## Aktiv BLE-scan ved manglende annonsering (v0.6.12)
 
@@ -150,6 +161,14 @@ Nye diagnostikksensorer:
 - **Programmert intervall** – siste intervall som er lest tilbake og bekreftet, f.eks. `Natt 23:30–06:30`.
 - **Sist tidsplan bekreftet** – tidspunkt for siste vellykkede read-back-verifisering.
 
+## v0.6.13
+
+- Added duplicate suppression for automatic Bluetooth discovery when a Nixie clock is rediscovered with another BLE address.
+- Matches the Nixie service UUID and, when available, the expected `Nixie Clock` name before applying single-instance automatic discovery behavior.
+- Suppresses concurrent automatic discovery flows for the same Nixie device type.
+- Does not automatically replace the Bluetooth address of an existing config entry.
+- Manual setup remains available for intentionally adding additional Nixie clocks.
+
 ## v0.6.12
 
 - Added one short Home Assistant active Bluetooth scan when no proxy has a fresh advertisement or source-specific cache entry for the clock.
@@ -206,7 +225,7 @@ Nye diagnostikksensorer:
 
 ## Version history
 
-Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8`, `v0.6.9`, `v0.6.10`, `v0.6.11` and `v0.6.12`.
+Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8`, `v0.6.9`, `v0.6.10`, `v0.6.11`, `v0.6.12` and `v0.6.13`.
 
 ## Changelog
 
