@@ -140,7 +140,17 @@ class NixieBLE:
                         self.address,
                         ACTIVE_SCAN_SECONDS,
                     )
-                    await request_active_scan(self.hass, ACTIVE_SCAN_SECONDS)
+                    try:
+                        await request_active_scan(self.hass, ACTIVE_SCAN_SECONDS)
+                    except Exception as err:
+                        # Active scanning is only a discovery fallback. If a
+                        # scanner backend rejects the request, keep the normal
+                        # no-device error path instead of breaking the coordinator.
+                        _LOGGER.debug(
+                            "Nixie active Bluetooth scan failed for %s: %s",
+                            self.address,
+                            err,
+                        )
                     cached_devices = bluetooth.async_scanner_devices_by_address(
                         self.hass, self.address, connectable=True
                     )
