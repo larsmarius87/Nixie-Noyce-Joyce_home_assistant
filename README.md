@@ -170,7 +170,7 @@ Nye diagnostikksensorer:
 - Only one automatic Nixie discovery flow can be active while initial setup is pending.
 - The real BLE address is assigned as the unique ID only when the first discovered clock is confirmed.
 - Manual setup remains available for intentionally adding additional physical clocks.
-- Updated user-facing repository wording from **HACS** to **Marketplace**. Required technical filenames and action identifiers remain unchanged.
+- Updated user-facing repository wording to **Marketplace**. Required technical filenames and action identifiers remain unchanged.
 
 ## v0.6.13
 
@@ -205,7 +205,7 @@ Nye diagnostikksensorer:
 - After a successful automatic synchronization, future runs follow the selected interval.
 - Manual clock synchronization does not shift the automatic schedule.
 - Automatic retries after BLE failures still run after 10 minutes.
-- Added HACS metadata, Marketplace validation workflow and hassfest workflow.
+- Added Marketplace metadata, Marketplace validation workflow and hassfest workflow.
 - Added required Marketplace manifest metadata: documentation, issue tracker and code owner.
 
 ## v0.6.9
