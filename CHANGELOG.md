@@ -2,6 +2,16 @@
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
+## 0.6.14
+
+- Replaced the v0.6.13 custom duplicate-discovery logic with Home Assistant's native `_async_handle_discovery_without_unique_id()` flow handling.
+- Automatic Bluetooth discovery now aborts whenever a Nixie config entry already exists, regardless of the newly observed BLE address.
+- Home Assistant permits only one pending automatic discovery flow when no Nixie has been configured yet.
+- The actual BLE address is assigned as the config entry unique ID only after the user confirms the first discovered clock.
+- Existing configured BLE addresses are never silently replaced.
+- Manual setup remains available for users who intentionally have multiple physical Nixie clocks.
+- Updated user-facing repository terminology from **HACS** to **Marketplace** while preserving required technical identifiers such as `hacs.json` and `hacs/action@main`.
+
 ## 0.6.13
 
 - Added duplicate suppression for automatic Bluetooth discovery when a Nixie clock is rediscovered with a different BLE address.
@@ -37,9 +47,9 @@ All notable changes to the Noyce Joyce Nixie Home Assistant integration are docu
 - Manual synchronization does not change the automatic interval cadence.
 - Changing the auto-sync anchor time resets the cadence so the new time is respected.
 - Existing 10-minute BLE retry after failed automatic synchronization is preserved.
-- Added `hacs.json` and HACS validation workflow.
+- Added `hacs.json` and Marketplace validation workflow.
 - Added hassfest validation workflow.
-- Added `documentation`, `issue_tracker`, `codeowners`, and `integration_type` to `manifest.json` for HACS/public repository readiness.
+- Added `documentation`, `issue_tracker`, `codeowners`, and `integration_type` to `manifest.json` for Marketplace/public repository readiness.
 
 ## 0.6.9
 
