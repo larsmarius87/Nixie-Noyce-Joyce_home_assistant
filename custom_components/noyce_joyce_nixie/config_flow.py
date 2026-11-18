@@ -12,7 +12,6 @@ from homeassistant.const import CONF_ADDRESS
 from .const import DOMAIN, NAME, SERVICE_UUID
 
 
-
 class NixieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Noyce Joyce Nixie."""
 
