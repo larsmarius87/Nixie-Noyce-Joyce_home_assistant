@@ -10,7 +10,7 @@ All notable changes to the Noyce Joyce Nixie Home Assistant integration are docu
 - The actual BLE address is assigned as the config entry unique ID only after the user confirms the first discovered clock.
 - Existing configured BLE addresses are never silently replaced.
 - Manual setup remains available for users who intentionally have multiple physical Nixie clocks.
-- Updated user-facing repository terminology from **HACS** to **Marketplace** while preserving required technical identifiers such as `hacs.json` and `hacs/action@main`.
+- Updated user-facing repository terminology to **Marketplace** while preserving required technical identifiers such as `hacs.json` and `hacs/action@main`.
 
 ## 0.6.13
 
