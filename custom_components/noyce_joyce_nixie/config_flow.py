@@ -8,21 +8,9 @@ from homeassistant import config_entries
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
 from homeassistant.const import CONF_ADDRESS
-from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 
 from .const import DOMAIN, NAME, SERVICE_UUID
 
-
-def _is_nixie_discovery(discovery_info: BluetoothServiceInfoBleak) -> bool:
-    """Return True for the Nixie BLE identity used for duplicate suppression."""
-    service_uuids = {uuid.lower() for uuid in discovery_info.service_uuids}
-    if SERVICE_UUID.lower() not in service_uuids:
-        return False
-
-    # Some scanner backends can occasionally omit the local name. When it is
-    # present, require the known Noyce Joyce name in addition to the service UUID.
-    name = (discovery_info.name or "").strip().casefold()
-    return not name or name == "nixie clock"
 
 
 class NixieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -38,35 +26,30 @@ class NixieConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not discovery_info.connectable:
             return self.async_abort(reason="not_connectable")
 
-        # The clock can occasionally be rediscovered with another BLE address.
-        # Automatic discovery should not create duplicate Nixie entries or
-        # multiple simultaneous confirmation flows for the same physical clock.
-        # Manual setup remains available for users who intentionally have more
-        # than one Nixie clock.
-        if _is_nixie_discovery(discovery_info) and (
-            self._async_current_entries(include_ignore=False)
-            or self._async_in_progress(include_uninitialized=True)
-        ):
-            return self.async_abort(
-                reason="single_instance_allowed",
-                translation_domain=HOMEASSISTANT_DOMAIN,
-            )
-
-        await self.async_set_unique_id(discovery_info.address)
-        self._abort_if_unique_id_configured()
+        # Home Assistant's native discovery helper intentionally treats
+        # automatic Bluetooth discovery as a single discovery identity. It
+        # aborts immediately when this integration already has a config entry,
+        # and permits only one discovery flow while setup is pending. This is
+        # important for clocks that can be observed with changing BLE addresses.
         self._discovery_info = discovery_info
         self.context["title_placeholders"] = {
             "name": discovery_info.name or NAME,
         }
+        await self._async_handle_discovery_without_unique_id()
         return await self.async_step_confirm()
 
     async def async_step_confirm(self, user_input=None):
         """Confirm a discovered clock."""
         assert self._discovery_info is not None
         if user_input is not None:
+            address = self._discovery_info.address
+            # Replace Home Assistant's temporary discovery identity with the
+            # actual BLE address only when the user confirms this first clock.
+            await self.async_set_unique_id(address)
+            self._abort_if_unique_id_configured()
             return self.async_create_entry(
                 title=self._discovery_info.name or NAME,
-                data={CONF_ADDRESS: self._discovery_info.address},
+                data={CONF_ADDRESS: address},
             )
 
         return self.async_show_form(
