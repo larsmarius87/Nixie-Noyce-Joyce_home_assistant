@@ -32,17 +32,17 @@ All notable changes to the Noyce Joyce Nixie Home Assistant integration are docu
 ## 0.6.11
 
 - Added configurable regular Bluetooth polling interval from 1 to 360 minutes.
-- Added `Bluetooth-oppdateringsintervall` number entity in minutes.
+- Added **Bluetooth update interval** number entity in minutes.
 - Default regular polling interval remains 5 minutes.
 - Interval changes are persisted and applied immediately by rescheduling DataUpdateCoordinator polling.
-- Renamed the automatic clock synchronization interval entity from `Synkintervall` to `Tidssynk-intervall` to avoid confusion with BLE polling.
+- Renamed the automatic clock synchronization interval entity from **Sync interval** to **Time sync interval** to avoid confusion with BLE polling.
 - Preserved the separate 30-second retry after failed coordinator BLE reads.
 
 ## 0.6.10
 
 - Added configurable automatic clock synchronization interval from 1 to 24 hours.
 - Default interval is 24 hours, preserving previous behavior.
-- Added `Synkintervall` number entity in hours.
+- Added **Sync interval** number entity in hours.
 - The configured auto-sync time acts as the initial anchor; subsequent automatic runs use the selected interval.
 - Manual synchronization does not change the automatic interval cadence.
 - Changing the auto-sync anchor time resets the cadence so the new time is respected.
@@ -61,11 +61,11 @@ All notable changes to the Noyce Joyce Nixie Home Assistant integration are docu
 - Tries up to six Bluetooth sources per connection round and falls back to the next source on connection failure.
 - Uses one Bleak connection attempt per source to avoid nested/aggressive retry loops.
 - Preserves the v0.6.7 coordinator-level 30-second retry if all sources fail or the clock is temporarily not seen.
-- Expanded `Sist brukt Bluetooth-proxy` attributes with RSSI at connection, candidate count, fallback count, source discovery method, and ranked candidate details.
+- Expanded **Last used Bluetooth proxy** attributes with RSSI at connection, candidate count, fallback count, source discovery method, and ranked candidate details.
 
 ## 0.6.8
 
-- Added `Sist brukt Bluetooth-proxy` diagnostic sensor.
+- Added **Last used Bluetooth proxy** diagnostic sensor.
 - Tracks the scanner/proxy source that actually carried the latest successful BLE connection, rather than only the most recent advertiser.
 - Uses the proxy/scanner source (normally its MAC address) as sensor state.
 - Adds the proxy/scanner name as an attribute when Home Assistant provides it.
@@ -78,7 +78,7 @@ All notable changes to the Noyce Joyce Nixie Home Assistant integration are docu
 - Initial BLE refresh now runs in the background after the entity platforms are set up.
 - Failed BLE refreshes request a 30-second retry through Home Assistant's DataUpdateCoordinator instead of leaving the config entry in setup retry.
 - BLE-dependent advanced schedule programming is deferred until the first successful clock read.
-- Advanced schedule status shows `Venter på klokka` while waiting for the first successful BLE read.
+- Advanced schedule status shows **Waiting for clock** while waiting for the first successful BLE read.
 - This improves recovery after Home Assistant restarts when an ESPHome Bluetooth Proxy temporarily has a stale or busy connection slot.
 
 ## 0.6.6
@@ -98,7 +98,7 @@ All notable changes to the Noyce Joyce Nixie Home Assistant integration are docu
 - Removed unconditional repeated schedule writes every five minutes.
 - Five-minute retry is now only used after BLE failure or failed read-back verification.
 - Added diagnostic sensors for schedule status, programmed interval, and last verified schedule time.
-- Restoring `Enkel` schedule mode is also read-back verified.
+- Restoring **Simple** schedule mode is also read-back verified.
 
 ## 0.6.0
 
@@ -111,7 +111,7 @@ All notable changes to the Noyce Joyce Nixie Home Assistant integration are docu
 ## 0.5.0
 
 - Added advanced display scheduling.
-- Added `Enkel` and `Ukedag / helg` schedule modes.
+- Added **Simple** and **Weekday / weekend** schedule modes.
 - Added separate weekday display-off and display-on times.
 - Added separate weekend display-off and display-on times.
 - Added optional daytime display-off period for Monday through Friday.
@@ -121,20 +121,20 @@ All notable changes to the Noyce Joyce Nixie Home Assistant integration are docu
 - Added last successful clock sync sensor.
 - Added last successful BLE contact sensor.
 - Added retry handling for failed Bluetooth operations.
-- Added restoration of the original simple night-mode interval when returning to `Enkel` mode.
+- Added restoration of the original simple night-mode interval when returning to **Simple** mode.
 
 ## 0.4.0
 
-- Added `Auto-synk` configuration switch.
-- Added adjustable `Tidspunkt for auto-synk` time entity.
+- Added **Auto sync** configuration switch.
+- Added adjustable **Auto sync time** time entity.
 - Automatic sync settings persist across Home Assistant restarts.
 - Default automatic sync remains enabled at 04:05.
-- Manual `Synkroniser klokke` button retained.
+- Manual **Synchronize clock** button retained.
 
 ## 0.3.0
 
 - Refined Hourglass / anti-poisoning presentation.
-- The firmware's once-per-day mode is shown as `Av` in Home Assistant as the least intrusive option.
+- The firmware's once-per-day mode is shown as **Off** in Home Assistant as the least intrusive option.
 - Available modes: Off/once daily, every minute, every 10 minutes, every 30 minutes, and every hour.
 
 ## 0.2.0
