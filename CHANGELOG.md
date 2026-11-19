@@ -1,4 +1,168 @@
-# Changelog
+# Endringslogg / Changelog
+
+[Norsk](#norsk) · [English](#english)
+
+## Norsk
+
+Alle viktige endringer i Noyce Joyce Nixie-integrasjonen for Home Assistant dokumenteres her.
+
+### 0.6.14
+
+- Erstattet den egendefinerte duplikat-discovery-logikken fra v0.6.13 med Home Assistants innebygde `_async_handle_discovery_without_unique_id()`-håndtering.
+- Automatisk Bluetooth-discovery avbrytes nå dersom en Nixie config entry allerede finnes, uavhengig av hvilken BLE-adresse som observeres.
+- Home Assistant tillater bare én ventende automatisk discovery-flyt når ingen Nixie ennå er konfigurert.
+- Den faktiske BLE-adressen settes som unique ID først etter at brukeren bekrefter den første oppdagede klokken.
+- Eksisterende konfigurerte BLE-adresser erstattes aldri automatisk.
+- Manuelt oppsett er fortsatt tilgjengelig for brukere som bevisst har flere fysiske Nixie-klokker.
+- Oppdaterte brukerrettet repository-terminologi til **Marketplace**, samtidig som nødvendige tekniske identifikatorer som `hacs.json` og `hacs/action@main` beholdes.
+
+### 0.6.13
+
+- La til duplikatbeskyttelse for automatisk Bluetooth-discovery når en Nixie-klokke oppdages på nytt med en annen BLE-adresse.
+- Automatisk duplikatbeskyttelse krever kjent Nixie service UUID og, når lokalt navn finnes, forventet navn `Nixie Clock`.
+- Hindrer flere samtidige automatiske discovery-bekreftelsesflyter for samme type Nixie-enhet.
+- Eksisterende config entries beholder lagret Bluetooth-adresse; discovery erstatter den ikke automatisk.
+- Manuelt oppsett ble beholdt slik at brukere med flere fysiske Nixie-klokker fortsatt kan legge til en ekstra klokke med vilje.
+
+### 0.6.12
+
+- La til aktiv Bluetooth-skanning ved behov når verken ferske annonseringer eller kildespesifikke cacheoppføringer finnes for Nixie-klokken.
+- Eksisterende callback for annonseringer forblir registrert under aktiv skanning slik at observasjoner fra alle skannere/proxyer fanges opp.
+- Kandidat-discovery kjøres på nytt etter skanningen og rangerer fortsatt kildene strengt etter RSSI.
+- Aktiv skanning oppretter ikke en GATT-tilkobling til klokken; vanlig multi-proxy-tilkobling er uendret.
+- La til diagnostiske kildetekster som viser når active-scan fallback ble brukt.
+- Eksisterende retry-tid for coordinator og automatisk klokkesynkronisering er uendret.
+
+### 0.6.11
+
+- La til konfigurerbart ordinært Bluetooth-pollingintervall fra 1 til 360 minutter.
+- La til tallentiteten **Bluetooth update interval** i minutter.
+- Standard ordinært pollingintervall er fortsatt 5 minutter.
+- Intervallendringer lagres og brukes umiddelbart ved å planlegge DataUpdateCoordinator på nytt.
+- Endret navn på intervallet for automatisk klokkesynkronisering fra **Sync interval** til **Time sync interval** for å unngå forveksling med BLE-polling.
+- Beholdt separat nytt forsøk etter 30 sekunder ved mislykket coordinator-BLE-avlesning.
+
+### 0.6.10
+
+- La til konfigurerbart intervall for automatisk klokkesynkronisering fra 1 til 24 timer.
+- Standardintervallet er 24 timer, som tidligere.
+- La til tallentiteten **Sync interval** i timer.
+- Konfigurert auto-sync-tid fungerer som første anker; senere automatiske kjøringer bruker valgt intervall.
+- Manuell synkronisering endrer ikke rytmen for automatisk synkronisering.
+- Endring av auto-sync-ankeret nullstiller rytmen slik at det nye klokkeslettet respekteres.
+- Eksisterende 10-minutters BLE-retry etter mislykket automatisk synkronisering er beholdt.
+- La til `hacs.json` og Marketplace-valideringsworkflow.
+- La til hassfest-valideringsworkflow.
+- La til `documentation`, `issue_tracker`, `codeowners` og `integration_type` i `manifest.json` for Marketplace/offentlig repository-klargjøring.
+
+### 0.6.9
+
+- Erstattet enkeltoppslaget med `async_ble_device_from_address()` med automatisk valg mellom flere Bluetooth-proxykilder.
+- Bruker Home Assistant `async_register_advertisement_callback()` for å samle ferske annonseringer per skanner for klokken.
+- Supplerer ferske observasjoner med `async_scanner_devices_by_address()` fra kildespesifikk skannercache.
+- Rangerer kandidater strengt etter RSSI, sterkest først.
+- Ferske observasjoner overstyrer cacheoppføringer fra samme skanner.
+- Prøver opptil seks Bluetooth-kilder per tilkoblingsrunde og går videre til neste kilde ved feil.
+- Bruker ett Bleak-tilkoblingsforsøk per kilde for å unngå nestede/aggressive retry-løkker.
+- Beholder coordinatorens 30-sekunders retry fra v0.6.7 dersom alle kilder feiler eller klokken midlertidig ikke sees.
+- Utvidet attributtene til **Last used Bluetooth proxy** med RSSI ved tilkobling, antall kandidater, fallback-antall, discovery-metode og rangert kandidatinformasjon.
+
+### 0.6.8
+
+- La til diagnosesensoren **Last used Bluetooth proxy**.
+- Sporer skanner/proxy-kilden som faktisk bar siste vellykkede BLE-tilkobling, ikke bare siste kilde som annonserte.
+- Bruker proxy/skanner-kilden, normalt MAC-adressen, som sensorstatus.
+- Legger til proxy/skanner-navn som attributt når Home Assistant leverer det.
+- Beholder siste kjente kilde synlig mens klokken midlertidig er frakoblet.
+
+### 0.6.7
+
+- Endret oppstart slik at integrasjonen ikke lenger blokkerer config-entry-oppsettet på første BLE-tilkobling.
+- La til sikre placeholder-data i coordinator slik at entitetsplattformene kan lastes før klokken er tilgjengelig.
+- Første BLE-refresh kjører nå i bakgrunnen etter at entitetsplattformene er satt opp.
+- Mislykkede BLE-refresh ber om nytt forsøk etter 30 sekunder via Home Assistants DataUpdateCoordinator i stedet for å la config entry stå i setup retry.
+- BLE-avhengig avansert tidsplanprogrammering utsettes til første vellykkede klokkeavlesning.
+- Avansert tidsplanstatus viser **Waiting for clock** mens den venter på første vellykkede BLE-avlesning.
+- Dette forbedrer gjenoppretting etter Home Assistant-omstart når en ESPHome Bluetooth Proxy midlertidig har en hengende eller opptatt tilkoblingsplass.
+
+### 0.6.6
+
+- La til lokale Home Assistant-brandbilder for integrasjonen.
+- La til `brand/icon.png` og `brand/icon@2x.png`.
+- La til `brand/logo.png` og `brand/logo@2x.png`.
+- Oppdaterte pakkemetadata til versjon 0.6.6.
+
+### 0.6.5
+
+- Bygget om den avanserte tidsplanen til å bruke kontrollavlesning.
+- Home Assistant leser nå klokkens gjeldende nattmodusinnstillinger før skriving.
+- Tidsplanverdier skrives bare når lagrede verdier i klokken avviker fra ønsket intervall.
+- BLE-skriving bruker GATT write response og etterfølges av umiddelbar kontrollavlesning.
+- En tidsplan markeres bare som vellykket når nattmodus, av-tid og på-tid alle samsvarer.
+- Fjernet ubetinget gjentatt skriving av tidsplan hvert femte minutt.
+- Fem-minutters retry brukes nå bare etter BLE-feil eller mislykket kontrollavlesning.
+- La til diagnosesensorer for tidsplanstatus, programmert intervall og tidspunkt for siste verifiserte tidsplan.
+- Tilbakestilling til **Simple**-modus verifiseres også med kontrollavlesning.
+
+### 0.6.0
+
+- La til avlesning av Nixie-klokkens egen RTC over BLE.
+- La til diagnosesensoren `Klokkens tid`.
+- La til diagnosesensoren `Klokkeavvik`, som viser differansen mellom klokkens RTC og Home Assistant i sekunder.
+- Bruker midtpunktet av BLE-avlesningen ved beregning av klokkeavvik for å redusere feil fra transaksjonsforsinkelse.
+- RTC-avlesningen er fail-safe, slik at resten av integrasjonen fortsetter å fungere dersom en firmwarevariant ikke kan leses.
+
+### 0.5.0
+
+- La til avansert displaytidsplan.
+- La til tidsplanmodusene **Simple** og **Weekday / weekend**.
+- La til separate av- og på-tider for ukedager.
+- La til separate av- og på-tider for helg.
+- La til valgfri avslått displayperiode på dagtid mandag–fredag.
+- Home Assistant programmerer dynamisk klokkens ene interne nattmodusintervall med neste relevante displayvindu.
+- Helgevalg følger dagen for morgen/display-på, slik at fredag kveld bruker lørdagsprofilen og søndag kveld bruker mandagsprofilen.
+- La til sensor for neste planlagte hendelse.
+- La til sensor for siste vellykkede klokkesynkronisering.
+- La til sensor for siste vellykkede BLE-kontakt.
+- La til retry-håndtering for mislykkede Bluetooth-operasjoner.
+- La til gjenoppretting av opprinnelig enkelt nattmodusintervall ved retur til **Simple**-modus.
+
+### 0.4.0
+
+- La til konfigurasjonsbryteren **Auto sync**.
+- La til justerbar tidsentitet **Auto sync time**.
+- Innstillinger for automatisk synkronisering beholdes gjennom omstarter av Home Assistant.
+- Standard automatisk synkronisering er fortsatt aktiv kl. 04:05.
+- Manuell knapp **Synchronize clock** beholdt.
+
+### 0.3.0
+
+- Forbedret presentasjonen av Hourglass / anti-poisoning.
+- Firmwarens én-gang-per-døgn-modus vises som **Off** i Home Assistant, siden dette er den minst inngripende innstillingen.
+- Tilgjengelige moduser: Off/én gang daglig, hvert minutt, hvert 10. minutt, hvert 30. minutt og hver time.
+
+### 0.2.0
+
+- La til manuell klokkesynkronisering fra Home Assistant.
+- La til automatisk daglig klokkesynkronisering.
+- La til tidssone-/sommertidsbevisst konvertering av lokal tid for RTC-synkronisering.
+- Første automatiske synkroniseringstid satt til 04:05.
+
+### 0.1.0
+
+- Første egendefinerte Home Assistant-integrasjon basert på reverse engineering av Noyce Joyce Android-appen og medfølgende firmware.
+- La til Bluetooth-discovery og tilkoblingsstøtte.
+- La til sensor for firmware-revisjon.
+- La til styring av 12/24-timers format.
+- La til styring av Nixie-prikker.
+- La til styring av Night Mode.
+- La til tidsstyring for Night Mode display på/av.
+- La til intervallstyring for Hourglass / anti-poisoning.
+- Dokumenterte reverse-engineered BLE service- og characteristic-UUID-er.
+
+---
+
+## English
 
 All notable changes to the Noyce Joyce Nixie Home Assistant integration are documented here.
 
