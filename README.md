@@ -1,5 +1,245 @@
 # Noyce Joyce Nixie – Home Assistant v0.6.14
 
+[Norsk](#norsk) · [English](#english)
+
+## Norsk
+
+Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
+
+### Funksjoner
+
+- Manuell synkronisering av klokken
+- Automatisk synkronisering med konfigurerbart klokkeslett og intervall fra 1–24 timer
+- Automatisk nytt forsøk etter 10 minutter dersom klokkesynkronisering feiler på grunn av Bluetooth
+- 12/24-timers tidsformat
+- Styring av Nixie-prikker
+- Nattmodus
+- Klokkens innebygde tidspunkter for av/på i nattmodus
+- Hourglass / anti-poisoning-effekt
+- Avansert tidsplan for ukedager og helg
+- Valgfri avslått skjerm på dagtid mandag–fredag
+- Automatisk programmering av neste relevante av/på-vindu inn i klokkens ene interne nattmodusintervall
+- Kontrollavlesning etter skriving av tidsplan
+- Tidsplanverdier skrives bare når verdiene som allerede ligger i klokken avviker fra ønsket tidsplan
+- Nytt forsøk etter fem minutter bare ved Bluetooth-feil eller mislykket kontrollavlesning
+- Diagnosesensorer for tidsplanstatus, programmert intervall og sist verifiserte tidsplan
+- Sensor for neste planlagte hendelse
+- Sensor for siste vellykkede klokkesynkronisering
+- Sensor for siste vellykkede Bluetooth-kontakt
+- Diagnosesensor for sist brukte Bluetooth-proxy/skanner, inkludert MAC-adresse og skannernavn når tilgjengelig
+- Robust Bluetooth-oppstart: integrasjonen blokkerer ikke Home Assistant dersom klokken ikke kan nås under oppstart
+- Automatisk valg mellom flere proxyer: ferske og bufrede Bluetooth-kilder rangeres etter RSSI, og neste kilde prøves dersom tilkoblingen feiler
+- Aktiv Bluetooth-skanning som reserve når ingen proxy ser en annonsering fra klokken
+- Automatisk undertrykking av duplikat-discovery når samme klokke observeres med skiftende Bluetooth-adresse
+- Konfigurerbart ordinært Bluetooth-avlesningsintervall fra 1–360 minutter, standard 5 minutter
+
+### Tidsplanmoduser
+
+**Simple** er standardmodus og lar klokken bruke sitt vanlige innebygde nattmodusintervall.
+
+**Weekday / weekend** lar Home Assistant programmere neste relevante intervall inn i klokken. Helgeprofilen velges ut fra dagen klokken skal slå på displayet om morgenen. Det betyr at fredag kveld bruker helgeprofilen for lørdag morgen, mens søndag kveld bruker ukedagsprofilen for mandag morgen.
+
+Den valgfrie perioden med avslått display på dagtid gjelder mandag til fredag. Siden klokkens firmware bare kan lagre ett nattmodusintervall om gangen, programmerer Home Assistant automatisk neste intervall etter at det gjeldende er ferdig. Selve av/på-hendelsen utføres lokalt av klokken når intervallet først er programmert.
+
+### Installer fra Marketplace
+
+Repoet er klargjort for installasjon via Marketplace. Dersom det ennå ikke vises i vanlig Marketplace-søk, kan det legges til som et egendefinert repository:
+
+1. Åpne **Marketplace → Integrations**.
+2. Åpne menyen og velg **Custom repositories**.
+3. Legg til `https://github.com/larsmarius87/Nixie-Noyce-Joyce_home_assistant`.
+4. Velg kategorien **Integration**.
+5. Installer **Noyce Joyce Nixie** og start Home Assistant på nytt.
+
+For å bli tilgjengelig som et vanlig søkbart repository i Marketplace kreves det også en publisert GitHub Release og innsending til Marketplaces standardliste over repositories.
+
+### Oppgradering
+
+Ved installasjon gjennom Marketplace brukes den vanlige oppdateringsflyten i Marketplace.
+
+Ved manuell installasjon erstatter du `custom_components/noyce_joyce_nixie` med den nye versjonen og starter Home Assistant på nytt.
+
+Eksisterende konfigurasjon beholdes ved oppgradering. Den avanserte tidsplanen bruker **Simple** som standard dersom den ikke allerede er konfigurert.
+
+### Beskyttelse mot duplikat Bluetooth-discovery (v0.6.14)
+
+Fra v0.6.14 bruker integrasjonen Home Assistants innebygde discovery-håndtering i stedet for den egendefinerte duplikatbeskyttelsen som ble introdusert i v0.6.13.
+
+- Automatisk Bluetooth-discovery bruker én midlertidig, delt discovery-identitet internt i Home Assistant.
+- Dersom en Nixie-konfigurasjon allerede finnes, avbrytes nye automatiske discovery-forslag umiddelbart, selv om klokken annonseres med en annen Bluetooth-adresse.
+- Dersom ingen Nixie er konfigurert, kan bare én automatisk discovery-flyt være aktiv om gangen.
+- Den faktiske Bluetooth-adressen blir config entry-ens unique ID først når den første oppdagede klokken bekreftes.
+- Bluetooth-adressen til en eksisterende config entry byttes aldri i bakgrunnen.
+- Manuelt oppsett er fortsatt tilgjengelig for brukere som bevisst har mer enn én fysisk Nixie-klokke.
+- Etter oppgradering fra v0.6.13 anbefales en full omstart av Home Assistant for å rydde discovery-flyter som allerede lå i minnet før oppdateringen.
+
+### Aktiv Bluetooth-skanning som reserve (v0.6.12)
+
+Når ingen Home Assistant-skanner/proxy har verken en fersk annonsering eller en kildespesifikk cacheoppføring for klokken, gjør integrasjonen ett ekstra discovery-forsøk før den gir opp:
+
+1. Den vanlige tre sekunders innsamlingen av annonseringer kjøres først.
+2. Hvis både ferske observasjoner og skannercache er tomme, ber integrasjonen Home Assistant om en kort aktiv Bluetooth-skanning.
+3. Callback for annonseringer forblir registrert under skanningen slik at observasjoner fra alle skannere kan bli kandidater.
+4. Kandidatlisten bygges på nytt og rangeres fortsatt etter RSSI.
+5. Hvis klokken fremdeles ikke annonserer, overtar vanlig håndtering av tilkoblingsfeil og nytt forsøk.
+
+Den aktive skanningen er **ikke en GATT-tilkobling til klokken**. Den brukes bare som reserve for å oppdage annonseringer og legger derfor ikke til en ekstra connect/disconnect-syklus.
+
+Bluetooth-kildediagnosen viser `active scan: ...` når denne reservefunksjonen ble brukt.
+
+### Bluetooth-avlesningsintervall (v0.6.11)
+
+**Bluetooth update interval** styrer hvor ofte Home Assistant gjør den ordinære Bluetooth-tilkoblingen som brukes til å lese status og RTC fra klokken.
+
+- Område: **1–360 minutter**
+- Trinn: **1 minutt**
+- Standard: **5 minutter**
+- Verdien lagres i config entry og overlever omstarter.
+- Endringer trer i kraft umiddelbart ved at coordinator-planen settes opp på nytt.
+- Det separate 30-sekunders forsøket etter en mislykket coordinator-avlesning er uendret.
+- Klokkesynkronisering bruker sin egen separate innstilling **Time sync interval**.
+
+### Justerbart intervall for klokkesynkronisering (v0.6.10)
+
+- **Auto sync** aktiverer eller deaktiverer automatisk klokkesynkronisering.
+- **Auto sync time** brukes som første anker før den første vellykkede automatiske synkroniseringen.
+- **Time sync interval** kan settes fra **1 til 24 timer** i hele timer. Standard: **24 timer**.
+- Etter en vellykket automatisk synkronisering følger neste kjøring det valgte intervallet.
+- Manuell synkronisering flytter ikke den automatiske tidsplanen.
+- Dersom automatisk synkronisering feiler på grunn av Bluetooth, er nytt forsøk fortsatt etter **10 minutter**.
+- Endring av ankeret for automatisk synkronisering nullstiller intervallankeret slik at det nye klokkeslettet brukes.
+
+### Valg mellom flere Bluetooth-proxyer (v0.6.9)
+
+Fra v0.6.9 bruker integrasjonen automatisk kildevalg mellom Home Assistants Bluetooth-skannere/proxyer:
+
+1. Ferske annonseringer for klokkens MAC-adresse samles inn fra alle skannere i et kort innsamlingsvindu.
+2. Home Assistants kildespesifikke skannercache legges til dersom en skanner ikke annonserte i dette vinduet.
+3. Kandidatene rangeres strengt etter RSSI, sterkest først.
+4. En fersk observasjon fra en kilde overstyrer bufret informasjon fra samme kilde.
+5. Opptil seks Bluetooth-kilder prøves, med ett tilkoblingsforsøk per kilde.
+6. Dersom den sterkeste kilden feiler, prøves neste kandidat automatisk.
+7. Coordinatorens 30-sekunders retry brukes dersom ingen kandidat lykkes.
+
+Ingen proxy er hardkodet eller låst.
+
+Diagnosesensoren **Last used Bluetooth proxy** viser kilden som ble brukt for siste vellykkede Bluetooth-tilkobling, med attributter for skannernavn, RSSI, antall kandidater, antall fallback-forsøk, discovery-metode og rangert kandidatliste.
+
+### Robust Bluetooth-oppstart (v0.6.7)
+
+Den første Bluetooth-tilkoblingen er ikke lenger en del av den blokkerende oppstarten av config entry.
+
+Dette er nyttig med ESPHome Bluetooth Proxy, der en skanner av og til kan ha en hengende eller opptatt tilkoblingsplass etter en omstart av Home Assistant.
+
+Oppførsel:
+
+1. Integrasjonen fullfører innlasting uten at klokken må være tilgjengelig under oppstart.
+2. Entiteter som er avhengige av klokkedata forblir utilgjengelige frem til første vellykkede Bluetooth-avlesning.
+3. Første avlesning starter i bakgrunnen.
+4. Dersom tilkoblingen feiler, forblir integrasjonen lastet og coordinator prøver igjen etter **30 sekunder**.
+5. Når klokken blir tilgjengelig, kommer entitetene tilbake automatisk.
+6. Avansert tidsplanprogrammering venter til minst én gyldig klokkeavlesning er fullført, slik at konkurrerende Bluetooth-tilkoblinger under oppstart unngås.
+
+Fra v0.6.11 kan normal polling konfigureres med **Bluetooth update interval** fra 1 til 360 minutter.
+
+### RTC og måling av klokkeavvik (v0.6.0)
+
+Integrasjonen leser klokkens RTC fra Date/Time-karakteristikken under ordinære coordinator-oppdateringer.
+
+To diagnosesensorer vises:
+
+- **Clock time** – klokkeslettet Nixie-klokken returnerte ved siste avlesning.
+- **Clock drift** – differansen i sekunder mellom Nixie-klokkens RTC og Home Assistant ved midtpunktet for Bluetooth-avlesningen. Positive verdier betyr at Nixie-klokken går foran.
+
+Avlesningen er fail-safe: dersom en firmwarevariant ikke tillater lesing av Date/Time-karakteristikken, fortsetter resten av integrasjonen å fungere.
+
+### Verifisert tidsplan (v0.6.5)
+
+I avansert **Weekday / weekend**-modus verifiseres programmering av tidsplanen ved kontrollavlesning:
+
+1. Home Assistant leser først gjeldende verdier for Night mode, Display OFF og Display ON fra klokken.
+2. Dersom verdiene allerede samsvarer med ønsket intervall, skrives ingenting.
+3. Dersom de avviker, skrives de tre verdiene med GATT write response.
+4. Integrasjonen leser umiddelbart verdiene tilbake fra klokken.
+5. Tidsplanen markeres bare som vellykket når aktivert status, OFF-tid og ON-tid alle samsvarer.
+
+Den normale coordinator-oppdateringen er fortsatt en ren leseoperasjon for status/RTC. Tidsplanverdier skrives ikke gjentatte ganger når de allerede er verifisert.
+
+Diagnosesensorene inkluderer:
+
+- **Schedule status**
+- **Programmed interval**
+- **Last schedule verification**
+
+### Versjonshistorikk
+
+#### v0.6.14
+
+- Erstattet den egendefinerte duplikatbeskyttelsen fra v0.6.13 med Home Assistants innebygde discovery-håndtering uten unique ID.
+- Automatisk discovery stopper nå når en Nixie config entry allerede finnes.
+- Bare én automatisk Nixie-discovery-flyt kan være aktiv mens førstegangsoppsettet venter.
+- Den faktiske Bluetooth-adressen settes som unique ID først når den første oppdagede klokken bekreftes.
+- Manuelt oppsett er fortsatt tilgjengelig for bevisst å legge til flere fysiske klokker.
+- Oppdaterte brukerrettet repository-terminologi til **Marketplace**.
+
+#### v0.6.13
+
+- La til undertrykking av duplikater ved automatisk Bluetooth-discovery når en klokke oppdages på nytt med en annen Bluetooth-adresse.
+- Hindret flere samtidige automatiske discovery-bekreftelsesflyter.
+- Eksisterende konfigurerte adresser ble beholdt uendret.
+- Manuelt oppsett for ekstra klokker ble beholdt.
+
+#### v0.6.12
+
+- La til aktiv Bluetooth-skanning ved behov når ingen proxy har en fersk annonsering eller kildespesifikk cacheoppføring.
+- Holdt callback for annonseringer aktiv under skanningen.
+- Bygget kandidatlisten på nytt og rangerte den etter RSSI etter skanningen.
+- Den aktive skanningen oppretter ikke en ekstra GATT-tilkobling.
+
+#### v0.6.11
+
+- La til konfigurerbar ordinær Bluetooth-polling fra 1 til 360 minutter.
+- Standard polling er fortsatt 5 minutter.
+- Intervallendringer lagres og brukes umiddelbart.
+- Endret navnet på intervallet for automatisk klokkesynkronisering til **Time sync interval** for å skille det fra Bluetooth-polling.
+
+#### v0.6.10
+
+- La til konfigurerbart intervall for automatisk klokkesynkronisering fra 1 til 24 timer.
+- Standardintervallet er fortsatt 24 timer.
+- Manuell synkronisering endrer ikke den automatiske rytmen.
+- La til metadata for Marketplace, Marketplace-validering og hassfest-validering.
+
+#### v0.6.9
+
+- La til automatisk valg mellom flere Bluetooth-kilder/proxyer.
+- Samler ferske annonseringer per skanner og supplerer dem med kildespesifikke cacheoppføringer.
+- Rangerer kandidater etter RSSI og faller tilbake til neste kilde ved tilkoblingsfeil.
+- Utvidet Bluetooth-proxy-diagnostikk.
+
+#### v0.6.8
+
+- La til diagnosesensoren **Last used Bluetooth proxy**.
+
+#### v0.6.7
+
+- La til ikke-blokkerende Bluetooth-oppstart og nytt forsøk etter 30 sekunder ved mislykket første avlesning.
+- Avansert tidsplan venter på første vellykkede klokkeavlesning.
+
+#### v0.6.6
+
+- La til lokale Home Assistant-brandbilder for integrasjonen.
+
+Historisk dokumentasjon for v0.1.0 til og med v0.6.5 er bevart i [`history/`](history/README.md). Kilde-snapshot-branches finnes for alle bevarte utgivelser fra v0.1.0 til og med v0.6.14, med unntak av v0.6.1–v0.6.4 fordi det ikke ble laget egne pakker for disse versjonene.
+
+### Endringslogg
+
+Se [`CHANGELOG.md`](CHANGELOG.md) for komplett versjonshistorikk.
+
+---
+
+## English
+
 Local Bluetooth integration for the Noyce Joyce Nixie Clock.
 
 ## Features
