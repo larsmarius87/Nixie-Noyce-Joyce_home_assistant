@@ -1,243 +1,233 @@
 # Noyce Joyce Nixie – Home Assistant v0.6.14
 
-Lokal Bluetooth-integrasjon for Noyce Joyce Nixie Clock.
+Local Bluetooth integration for the Noyce Joyce Nixie Clock.
 
-## Funksjoner
+## Features
 
-- Synkroniser klokke manuelt
-- Automatisk klokkesynk med justerbart tidspunkt og intervall på 1–24 timer
-- Automatisk retry hvert 10. minutt dersom klokkesynk feiler på grunn av BLE
-- 12/24-timersformat
-- Nixie-prikker
-- Nattmodus
-- Klokkens egne nattmodus start/slutt-tider
-- Timeglasseffekt / anti-poisoning
-- Avansert tidsplan med egne tider for ukedag og helg
-- Valgfritt dagtidsavslag mandag–fredag
-- Automatisk programmering av neste relevante av/på-vindu til klokkens ene interne nattmodusintervall
-- Read-back-verifisering av tidsplanen etter BLE-skriving
-- Skriver bare tidsplan når klokkens lagrede verdier faktisk avviker
-- Retry hvert 5. minutt kun ved BLE-feil eller mislykket read-back-verifisering
-- Sensorer for tidsplanstatus, programmert intervall og sist bekreftet tidsplan
-- Sensor for neste planlagte hendelse
-- Sensor for sist vellykkede klokkesynk
-- Sensor for sist vellykkede BLE-kontakt
-- Diagnostikksensor for sist brukte Bluetooth-proxy/scanner (MAC-adresse, med navn som attributt når tilgjengelig)
-- Robust BLE-oppstart: integrasjonen blokkerer ikke Home Assistant dersom Bluetooth-proxyen ikke kan koble til ved restart
-- Automatisk multi-proxyvalg: rangerer ferske og cachede Bluetooth-kilder etter RSSI og prøver neste kilde ved feil
-- Aktiv BLE-scan ved manglende annonsering: gjør én kort engangsprobe før integrasjonen konkluderer med at ingen proxy ser klokka
-- Duplikatbeskyttelse for automatisk Bluetooth-discovery når samme klokke dukker opp med en annen BLE-adresse
-- Justerbart Bluetooth-oppdateringsintervall fra 1 til 360 minutter, standard 5 minutter
+- Manual clock synchronization
+- Automatic clock synchronization with configurable time and interval from 1–24 hours
+- Automatic 10-minute retry if clock synchronization fails because of Bluetooth
+- 12/24-hour time format
+- Nixie dots control
+- Night mode
+- Native night-mode display on/off times
+- Hourglass / anti-poisoning effect
+- Advanced weekday/weekend scheduling
+- Optional weekday daytime display-off period
+- Automatic programming of the next relevant display-off/display-on window into the clock's single internal night-mode interval
+- Read-back verification after schedule writes
+- Schedule values are only written when the values stored in the clock differ from the desired schedule
+- Five-minute schedule retry only after Bluetooth failure or failed read-back verification
+- Diagnostic sensors for schedule status, programmed interval, and last verified schedule
+- Sensor for the next scheduled event
+- Sensor for the last successful clock synchronization
+- Sensor for the last successful Bluetooth contact
+- Diagnostic sensor for the last Bluetooth proxy/scanner used, including MAC address and scanner name when available
+- Robust Bluetooth startup: the integration does not block Home Assistant if the clock cannot be reached during startup
+- Automatic multi-proxy selection: fresh and cached Bluetooth sources are ranked by RSSI and the next source is tried if a connection fails
+- Active Bluetooth scan fallback when no proxy currently sees an advertisement from the clock
+- Automatic duplicate-discovery suppression when the same clock is observed with a changing Bluetooth address
+- Configurable regular Bluetooth polling interval from 1–360 minutes, default 5 minutes
 
-## Tidsplanmodus
+## Schedule modes
 
-`Enkel` er standard og lar klokka bruke sitt vanlige nattmodusintervall akkurat som før.
+**Simple** is the default mode and lets the clock use its normal built-in night-mode interval.
 
-`Ukedag / helg` lar Home Assistant programmere neste relevante intervall til klokka. Helgeprofilen velges etter morgenen/display-på-dagen. Det betyr at fredag kveld bruker helgetiden for lørdag morgen, mens søndag kveld bruker ukedagstiden for mandag morgen.
+**Weekday / weekend** lets Home Assistant program the next relevant interval into the clock. The weekend profile is selected according to the morning/display-on day. This means Friday night uses the weekend profile for Saturday morning, while Sunday night uses the weekday profile for Monday morning.
 
-Dagtidsavslag gjelder mandag–fredag. Siden klokkens firmware bare kan lagre ett nattmodusintervall om gangen, programmerer Home Assistant automatisk neste intervall etter at det forrige er ferdig. Klokka utfører selve av/på-hendelsen lokalt når intervallet allerede er programmert.
+The optional daytime display-off period applies Monday through Friday. Because the clock firmware can store only one night-mode interval at a time, Home Assistant automatically programs the next interval after the current one has finished. The clock itself executes the display on/off event locally once the interval has been programmed.
 
-## Installere med Marketplace
+## Install from Marketplace
 
-Repoet er klargjort for Marketplace. Når GitHub-repoet er satt til **Public**, kan det legges til som et egendefinert repository:
+The repository is prepared for Marketplace installation. If it is not yet available through normal Marketplace search, it can be added as a custom repository:
 
-1. Åpne **Marketplace → Integrasjoner**.
-2. Åpne menyen og velg **Egendefinerte repositories / Custom repositories**.
-3. Legg inn `https://github.com/larsmarius87/Nixie-Noyce-Joyce_home_assistant`.
-4. Velg kategori **Integration**.
-5. Installer **Noyce Joyce Nixie** og restart Home Assistant.
+1. Open **Marketplace → Integrations**.
+2. Open the menu and choose **Custom repositories**.
+3. Add `https://github.com/larsmarius87/Nixie-Noyce-Joyce_home_assistant`.
+4. Select category **Integration**.
+5. Install **Noyce Joyce Nixie** and restart Home Assistant.
 
-For å bli søkbar som et standardrepository i Marketplace kreves i tillegg en full GitHub Release og innsending til `hacs/default`.
+For inclusion as a standard searchable Marketplace repository, the project also requires a published GitHub Release and submission to the Marketplace default repository list.
 
-## Oppgradering
+## Upgrade
 
-Kopier `custom_components/noyce_joyce_nixie` over eksisterende mappe og start Home Assistant på nytt.
+When installed through Marketplace, use the normal Marketplace update flow.
 
-Eksisterende innstillinger fra v0.4 beholdes. Avansert tidsplan starter i `Enkel`, så den endrer ikke klokkas oppførsel før du velger `Ukedag / helg`.
+For a manual installation, replace `custom_components/noyce_joyce_nixie` with the new version and restart Home Assistant.
 
-## Duplikatbeskyttelse ved BLE-discovery (v0.6.14)
+Existing configuration is retained when upgrading. The advanced scheduler defaults to **Simple** mode unless it has already been configured.
 
-Fra v0.6.14 brukes Home Assistants innebygde discovery-mekanisme i stedet for den egendefinerte sperren fra v0.6.13.
+## Duplicate Bluetooth discovery protection (v0.6.14)
 
-- Automatisk Bluetooth-discovery får én midlertidig felles discovery-identitet i Home Assistant.
-- Hvis en Nixie allerede er konfigurert, avbrytes nye automatiske discovery-forslag umiddelbart — også dersom klokka annonseres med en annen BLE-adresse.
-- Hvis ingen Nixie er konfigurert, kan bare én automatisk discovery-flow være aktiv om gangen.
-- Først når brukeren bekrefter den første klokka, lagres den faktiske BLE-adressen som integrasjonens unique ID.
-- Eksisterende config entry og lagret Bluetooth-adresse endres ikke automatisk.
-- **Manuell legg-til** er fortsatt tilgjengelig dersom man faktisk har flere fysiske Nixie-klokker.
-- Etter oppgradering fra v0.6.13 anbefales en full Home Assistant-restart for å fjerne discovery-flows som allerede lå i minnet før oppdateringen.
+From v0.6.14, the integration uses Home Assistant's native discovery handling instead of the custom duplicate guard introduced in v0.6.13.
 
-## Aktiv BLE-scan ved manglende annonsering (v0.6.12)
+- Automatic Bluetooth discovery uses one temporary shared discovery identity inside Home Assistant.
+- If a Nixie config entry already exists, new automatic discovery proposals are aborted immediately, even if the clock is advertised with a different Bluetooth address.
+- If no Nixie is configured, only one automatic discovery flow may be active at a time.
+- The actual Bluetooth address becomes the config entry unique ID only when the first discovered clock is confirmed.
+- The Bluetooth address of an existing config entry is never silently replaced.
+- Manual setup remains available for users who intentionally have more than one physical Nixie clock.
+- After upgrading from v0.6.13, a full Home Assistant restart is recommended to clear discovery flows that were already held in memory before the update.
 
-Når ingen Home Assistant-scanner/proxy har en fersk annonsering eller en kildebestemt cacheoppføring for Nixie-klokka, gjør integrasjonen nå én ekstra engangsprobe før den gir opp:
+## Active Bluetooth scan fallback (v0.6.12)
 
-1. Den vanlige 3-sekunders innsamlingen av annonseringer kjøres først.
-2. Hvis både ferske observasjoner og scanner-cache er tomme, ber integrasjonen Home Assistant om en kort aktiv BLE-scan.
-3. Advertisement-callbacken holdes aktiv under scanningen, slik at observasjoner fra alle proxyer kan bli kandidater.
-4. Kandidatlisten bygges på nytt og rangeres fortsatt etter RSSI som før.
-5. Hvis klokka fortsatt ikke annonserer, returneres vanlig tilkoblingsfeil og eksisterende retry-logikk overtar.
+When no Home Assistant scanner/proxy has either a fresh advertisement or a source-specific cache entry for the clock, the integration performs one additional discovery attempt before giving up:
 
-Den aktive scanningen er **ikke en GATT-tilkobling til klokka**. Den brukes bare for å forsøke å oppdage en annonsering som passiv/AUTO scanning ikke hadde fanget akkurat da. Multi-proxyvalg, ett connect-forsøk per kilde og øvrig BLE-logikk er ellers uendret.
+1. The normal 3-second advertisement collection runs first.
+2. If both fresh observations and scanner cache are empty, the integration asks Home Assistant for a short active Bluetooth scan.
+3. The advertisement callback remains registered during the scan so observations from all scanners can become candidates.
+4. The candidate list is rebuilt and remains ranked by RSSI.
+5. If the clock still does not advertise, the normal connection error and retry handling takes over.
 
-Diagnostikkfeltet `kildevalg` viser `aktiv scan: ...` når denne ekstra proben ble brukt.
+The active scan is **not a GATT connection to the clock**. It is only an advertisement discovery fallback and therefore does not add another connect/disconnect cycle.
 
-## Bluetooth-oppdateringsintervall (v0.6.11)
+The Bluetooth source diagnostic reports `active scan: ...` when this fallback was used.
 
-**Bluetooth-oppdateringsintervall** styrer hvor ofte Home Assistant gjør den ordinære BLE-tilkoblingen til Nixie-klokka for å lese status og RTC.
+## Bluetooth polling interval (v0.6.11)
 
-- Område: **1–360 minutter**
-- Trinn: **1 minutt**
-- Standard: **5 minutter**
-- Endringer lagres i config entry og beholdes etter restart.
-- Ny verdi tas i bruk umiddelbart ved at coordinatorens neste polling planlegges på nytt.
-- 30-sekunders retry ved en mislykket BLE-avlesning er separat og beholdes uendret.
-- Tids-synkronisering er separat og heter **Tidssynk-intervall**.
+**Bluetooth update interval** controls how often Home Assistant performs the regular Bluetooth connection used to read the clock state and RTC.
 
-## Justerbart tidssynkintervall (v0.6.10)
+- Range: **1–360 minutes**
+- Step: **1 minute**
+- Default: **5 minutes**
+- The value is stored in the config entry and survives restarts.
+- Changes take effect immediately by rescheduling the coordinator.
+- The separate 30-second retry after a failed coordinator Bluetooth read remains unchanged.
+- Clock synchronization uses its own separate **Time sync interval** setting.
 
-- **Auto-synk** slår automatisk klokkesynk av/på.
-- **Tidspunkt for auto-synk** brukes som start/ankertidspunkt før første vellykkede automatiske synk.
-- **Tidssynk-intervall** kan settes fra **1 til 24 timer** i hele timer. Standard er **24 timer**.
-- Etter en vellykket automatisk synk planlegges neste synk etter valgt intervall.
-- Manuell **Synkroniser klokke** endrer ikke den automatiske intervallplanen.
-- Hvis en automatisk synk feiler over Bluetooth, beholdes eksisterende retry etter **10 minutter**.
-- Endrer du **Tidspunkt for auto-synk**, nullstilles intervallets anker slik at det nye tidspunktet brukes.
+## Adjustable time synchronization interval (v0.6.10)
 
-## Multi-proxy Bluetooth-valg (v0.6.9)
+- **Auto sync** enables or disables automatic clock synchronization.
+- **Auto sync time** is used as the initial anchor before the first successful automatic synchronization.
+- **Time sync interval** can be configured from **1 to 24 hours** in whole hours. Default: **24 hours**.
+- After a successful automatic synchronization, the next run follows the selected interval.
+- Manual synchronization does not shift the automatic schedule.
+- If automatic synchronization fails because of Bluetooth, the existing retry remains **10 minutes**.
+- Changing the auto-sync anchor time resets the interval anchor so the new time is used.
 
-Fra v0.6.9 bruker Nixie-integrasjonen samme grunnprinsipp for Bluetooth-kildevalg som Xzense 0.5.24:
+## Multi-proxy Bluetooth selection (v0.6.9)
 
-1. Samler ferske annonseringer for klokkens MAC fra alle Home Assistant-scannere/proxyer i et kort vindu.
-2. Supplerer med Home Assistants kildebestemte scanner-cache dersom en proxy ikke annonserte akkurat i innsamlingsvinduet.
-3. Rangerer kandidatene strengt etter RSSI, sterkeste først.
-4. Fersk observasjon fra en kilde overstyrer cache fra samme kilde.
-5. Prøver opptil seks ulike Bluetooth-kilder, ett BLE-forsøk per kilde.
-6. Hvis sterkeste kilde feiler, prøves neste kandidat automatisk.
-7. Eksisterende 30-sekunders coordinator-retry brukes dersom ingen kandidat lykkes.
+From v0.6.9, the integration uses automatic source selection across Home Assistant Bluetooth scanners/proxies:
 
-Ingen proxy er hardkodet eller låst. Hvis `bluetooth proxy stue` fysisk er nærmest klokka, skal den normalt velges automatisk når den også har sterkest RSSI.
+1. Fresh advertisements for the clock MAC address are collected from all scanners during a short collection window.
+2. Home Assistant's source-specific scanner cache is added when a scanner did not advertise during that window.
+3. Candidates are ranked strictly by RSSI, strongest first.
+4. A fresh observation from a source overrides cached information from the same source.
+5. Up to six Bluetooth sources are tried, with one connection attempt per source.
+6. If the strongest source fails, the next candidate is tried automatically.
+7. The coordinator-level 30-second retry is used if no candidate succeeds.
 
-Diagnostikksensoren **Sist brukt Bluetooth-proxy** viser fortsatt MAC/source for siste vellykkede BLE-forbindelse og har fra v0.6.9 også attributter for scanner-navn, RSSI ved tilkobling, antall kandidater, antall fallbacks, kildevalg og kandidatlisten.
+No proxy is hard-coded or pinned.
 
-## Robust BLE-oppstart (v0.6.7)
+The **Last used Bluetooth proxy** diagnostic exposes the source used for the most recent successful Bluetooth connection, with attributes for scanner name, RSSI, candidate count, fallback count, discovery method, and the ranked candidate list.
 
-Fra v0.6.7 er første BLE-tilkobling **ikke lenger en del av den blokkerende config-entry-oppsettingen**.
+## Robust Bluetooth startup (v0.6.7)
 
-Dette er spesielt nyttig med ESPHome Bluetooth Proxy, der en proxy i enkelte situasjoner kan ha en midlertidig stale/busy connection-slot etter restart av Home Assistant.
+The first Bluetooth connection is no longer part of the blocking config-entry setup.
 
-Oppførselen er nå:
+This is useful with ESPHome Bluetooth Proxy, where a scanner can occasionally have a stale or busy connection slot after a Home Assistant restart.
 
-1. Noyce Joyce-integrasjonen lastes ferdig uten å vente på at klokka må kunne kobles til akkurat under HA-oppstart.
-2. Entiteter som krever klokkedata vises som utilgjengelige frem til første vellykkede BLE-avlesning.
-3. Første BLE-avlesning startes umiddelbart i bakgrunnen.
-4. Hvis tilkoblingen feiler, beholdes integrasjonen lastet og coordinatoren prøver igjen etter **30 sekunder**.
-5. Når klokka blir tilgjengelig, går entitetene automatisk tilbake til normal tilstand.
-6. Avansert tidsplan/scheduler venter med BLE-programmering til minst én gyldig avlesning fra klokka er mottatt. Dette hindrer parallelle connect-forsøk ved oppstart.
+Behavior:
 
-Fra v0.6.11 er vanlig polling justerbar med **Bluetooth-oppdateringsintervall** fra 1 til 360 minutter. Standard er fortsatt 5 minutter.
+1. The integration finishes loading without requiring the clock to be reachable during startup.
+2. Entities that depend on clock data remain unavailable until the first successful Bluetooth read.
+3. The first read starts in the background.
+4. If the connection fails, the integration remains loaded and the coordinator retries after **30 seconds**.
+5. When the clock becomes available, the entities recover automatically.
+6. Advanced schedule programming waits until at least one valid clock read has completed, avoiding competing Bluetooth connections during startup.
 
-## RTC / drift measurement (v0.6.0)
+From v0.6.11, normal polling is configurable with **Bluetooth update interval** from 1 to 360 minutes.
 
-The integration attempts to read the clock's own RTC value from the Date/Time characteristic on every normal coordinator refresh. From v0.6.11 the refresh interval is configurable from 1 to 360 minutes (default 5 minutes). Two diagnostic sensors are exposed:
+## RTC and drift measurement (v0.6.0)
 
-- **Klokkens tid** – the wall-clock time returned by the Nixie clock at the last read.
-- **Klokkeavvik** – difference in seconds between the Nixie RTC and Home Assistant at the BLE read midpoint. Positive values mean the Nixie clock is ahead.
+The integration reads the clock's RTC from the Date/Time characteristic during regular coordinator refreshes.
 
-The read is optional/fail-safe: if a firmware variant does not permit reading the Date/Time characteristic, all other entities continue working.
+Two diagnostic sensors are exposed:
 
-## Bekreftet scheduler (v0.6.5)
+- **Clock time** – the wall-clock time returned by the Nixie clock at the last read.
+- **Clock drift** – the difference in seconds between the Nixie RTC and Home Assistant at the Bluetooth read midpoint. Positive values mean the Nixie clock is ahead.
 
-I avansert `Ukedag / helg`-modus er scheduler-logikken nå bekreftelsesbasert:
+The read is fail-safe: if a firmware variant does not allow the Date/Time characteristic to be read, the rest of the integration continues to work.
 
-1. Home Assistant leser først `Night mode`, `Display OFF` og `Display ON` fra klokka.
-2. Hvis verdiene allerede tilsvarer ønsket neste intervall, sendes ingen ny skriving.
-3. Hvis de avviker, skrives de tre verdiene med GATT `response=True`.
-4. Integrasjonen leser deretter de tre verdiene tilbake fra klokka og sammenligner dem med det som skulle programmeres.
-5. Kun en bekreftet match regnes som vellykket. Ved BLE-feil eller mismatch prøves det på nytt etter 5 minutter.
+## Verified scheduler (v0.6.5)
 
-Den ordinære coordinator-oppdateringen er fortsatt en **lesing** av klokkas tilstand/RTC. Fra v0.6.11 er intervallet justerbart fra 1 til 360 minutter. Scheduler-verdiene sendes ikke på nytt hvert 5. minutt når de allerede er bekreftet.
+In advanced **Weekday / weekend** mode, schedule programming is verified with read-back:
 
-Nye diagnostikksensorer:
+1. Home Assistant first reads the current Night mode, Display OFF, and Display ON values from the clock.
+2. If the values already match the desired interval, nothing is written.
+3. If they differ, the three values are written using GATT write responses.
+4. The integration immediately reads the values back from the clock.
+5. The schedule is only marked successful when enabled state, OFF time, and ON time all match.
 
-- **Tidsplanstatus** – `Bekreftet`, `Kontrollerer`, `Ikke bekreftet – prøver igjen` eller `Enkel modus`.
-- **Programmert intervall** – siste intervall som er lest tilbake og bekreftet, f.eks. `Natt 23:30–06:30`.
-- **Sist tidsplan bekreftet** – tidspunkt for siste vellykkede read-back-verifisering.
+The normal coordinator update remains a read-only state/RTC refresh. Schedule values are not repeatedly written when they are already verified.
 
-## v0.6.14
+Diagnostic sensors include:
 
-- Replaced the custom v0.6.13 duplicate-discovery guard with Home Assistant's native discovery-without-unique-ID mechanism.
-- Automatic Bluetooth discovery now aborts when any Nixie config entry already exists.
-- Only one automatic Nixie discovery flow can be active while initial setup is pending.
-- The real BLE address is assigned as the unique ID only when the first discovered clock is confirmed.
-- Manual setup remains available for intentionally adding additional physical clocks.
-- Updated user-facing repository wording to **Marketplace**. Required technical filenames and action identifiers remain unchanged.
-
-## v0.6.13
-
-- Added duplicate suppression for automatic Bluetooth discovery when a Nixie clock is rediscovered with another BLE address.
-- Matches the Nixie service UUID and, when available, the expected `Nixie Clock` name before applying single-instance automatic discovery behavior.
-- Suppresses concurrent automatic discovery flows for the same Nixie device type.
-- Does not automatically replace the Bluetooth address of an existing config entry.
-- Manual setup remains available for intentionally adding additional Nixie clocks.
-
-## v0.6.12
-
-- Added one short Home Assistant active Bluetooth scan when no proxy has a fresh advertisement or source-specific cache entry for the clock.
-- Keeps the per-scanner advertisement callback active during the active scan so observations from all Bluetooth sources can be collected.
-- Rebuilds and RSSI-ranks the multi-proxy candidate list after the active scan.
-- Does not open an extra GATT connection merely to scan; existing connection and retry behavior remains unchanged.
-- Diagnostic `kildevalg` now indicates when the active-scan fallback was used.
-
-## v0.6.11
-
-- Added **Bluetooth-oppdateringsintervall** configuration from 1 to 360 minutes.
-- Default BLE polling interval remains 5 minutes.
-- Changing the interval reschedules DataUpdateCoordinator polling immediately without requiring a restart.
-- The setting is persisted in the config entry.
-- Renamed the v0.6.10 automatic clock synchronization number from **Synkintervall** to **Tidssynk-intervall** to distinguish it from BLE polling.
-- Existing 30-second BLE failure retry remains unchanged.
-
-## v0.6.10
-
-- Added adjustable **Synkintervall** configuration from 1 to 24 hours.
-- Default interval remains 24 hours.
-- The configured auto-sync time is used as the initial anchor.
-- After a successful automatic synchronization, future runs follow the selected interval.
-- Manual clock synchronization does not shift the automatic schedule.
-- Automatic retries after BLE failures still run after 10 minutes.
-- Added Marketplace metadata, Marketplace validation workflow and hassfest workflow.
-- Added required Marketplace manifest metadata: documentation, issue tracker and code owner.
-
-## v0.6.9
-
-- Added automatic multi-proxy Bluetooth source selection based on the proven Xzense 0.5.24 strategy.
-- Collects per-scanner fresh advertisements and supplements them with Home Assistant's source-specific scanner cache.
-- Ranks candidates strictly by RSSI and tries the next source when a BLE connection fails.
-- Tries at most six sources per connection round and one Bleak connection attempt per source.
-- Expanded `Sist brukt Bluetooth-proxy` diagnostics with RSSI, candidate count, fallback count, discovery method and ranked candidate details.
-- Keeps the v0.6.7 30-second coordinator retry when no Bluetooth source succeeds.
-
-## v0.6.8
-
-- Added **Sist brukt Bluetooth-proxy** diagnostic sensor.
-- Sensor state is the source/MAC of the scanner that carried the most recent successful BLE connection.
-- Proxy/scanner name is exposed as an attribute when available.
-- The last known proxy remains visible while the clock is temporarily unavailable.
-
-## v0.6.7
-
-- Non-blocking BLE startup.
-- 30-second retry after failed initial BLE reads.
-- Scheduler waits for the first successful clock read before programming an interval.
-
-## v0.6.6
-
-- Added local Home Assistant brand artwork (`brand/icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`).
+- **Schedule status**
+- **Programmed interval**
+- **Last schedule verification**
 
 ## Version history
 
-Historical README and protocol documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved version: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`, `v0.5.0`, `v0.6.0`, `v0.6.5`, `v0.6.6`, `v0.6.7`, `v0.6.8`, `v0.6.9`, `v0.6.10`, `v0.6.11`, `v0.6.12`, `v0.6.13` and `v0.6.14`.
+### v0.6.14
+
+- Replaced the v0.6.13 custom duplicate-discovery guard with Home Assistant's native discovery-without-unique-ID mechanism.
+- Automatic discovery now stops when a Nixie config entry already exists.
+- Only one automatic Nixie discovery flow can be active while initial setup is pending.
+- The actual Bluetooth address is assigned as unique ID only when the first discovered clock is confirmed.
+- Manual setup remains available for intentionally adding additional physical clocks.
+- Updated user-facing repository terminology to **Marketplace**.
+
+### v0.6.13
+
+- Added duplicate suppression for automatic Bluetooth discovery when a clock is rediscovered with another Bluetooth address.
+- Prevented multiple simultaneous automatic discovery confirmation flows.
+- Existing configured addresses were left unchanged.
+- Manual setup remained available for additional clocks.
+
+### v0.6.12
+
+- Added an on-demand active Bluetooth scan when no proxy has a fresh advertisement or source-specific cache entry.
+- Kept the per-scanner advertisement callback active during the scan.
+- Rebuilt and RSSI-ranked the multi-proxy candidate list after the scan.
+- The active scan does not establish an additional GATT connection.
+
+### v0.6.11
+
+- Added configurable regular Bluetooth polling from 1 to 360 minutes.
+- Default polling remains 5 minutes.
+- Interval changes are persisted and applied immediately.
+- Renamed the automatic synchronization interval to **Time sync interval** to distinguish it from Bluetooth polling.
+
+### v0.6.10
+
+- Added configurable automatic clock synchronization interval from 1 to 24 hours.
+- Default interval remains 24 hours.
+- Manual synchronization does not change the automatic cadence.
+- Added Marketplace metadata, Marketplace validation, and hassfest validation.
+
+### v0.6.9
+
+- Added automatic multi-proxy Bluetooth source selection.
+- Collects fresh per-scanner advertisements and supplements them with source-specific cache entries.
+- Ranks candidates by RSSI and falls back to the next source on connection failure.
+- Expanded Bluetooth proxy diagnostics.
+
+### v0.6.8
+
+- Added the **Last used Bluetooth proxy** diagnostic sensor.
+
+### v0.6.7
+
+- Added non-blocking Bluetooth startup and 30-second retry after failed initial reads.
+- Advanced scheduling waits for the first successful clock read.
+
+### v0.6.6
+
+- Added local Home Assistant brand artwork.
+
+Historical documentation for v0.1.0 through v0.6.5 is preserved in [`history/`](history/README.md). Source snapshot branches are available for every preserved release from v0.1.0 through v0.6.14, excluding v0.6.1–v0.6.4 because no standalone packages were created for those versions.
 
 ## Changelog
 
-See [`CHANGELOG.md`](CHANGELOG.md) for version history.
+See [`CHANGELOG.md`](CHANGELOG.md) for the complete version history.
